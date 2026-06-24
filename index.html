@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>♟ Chess Arena</title>
+    <link rel="stylesheet" href="/src/chess.css">
+    <script type="module" src="/src/main.js"></script>
+</head>
+
+<body>
+
+    <!-- ========== PAGE 1: Login ========== -->
+    <div class="page active" id="page-login">
+        <div class="card">
+            <div class="logo">
+                <span class="logo-icon">♟</span>
+                <div class="logo-title">Chess <span>Arena</span></div>
+                <div class="logo-sub">เข้าสู่ระบบ</div>
+            </div>
+            <div class="field">
+                <label for="inp-email">อีเมล</label>
+                <input type="email" id="inp-email" placeholder="your@email.com" autocomplete="email" maxlength="120">
+                <div class="error-msg" id="err-email">รูปแบบอีเมลไม่ถูกต้อง</div>
+            </div>
+            <div class="field">
+                <label for="inp-nick">ชื่อเล่น</label>
+                <input type="text" id="inp-nick" placeholder="เช่น GrandMaster99" autocomplete="nickname" maxlength="24"
+                    minlength="2">
+                <div class="error-msg" id="err-nick">ชื่อเล่น 2-24 ตัวอักษร</div>
+            </div>
+            <div id="login-error" class="error-msg" style="display:none; margin-bottom:12px; font-size:14px;"></div>
+            <button class="btn" id="btn-login" onclick="handleLogin()">เริ่มเล่น</button>
+            <p style="text-align:center; margin-top:16px; font-size:12px; color:var(--muted);">
+                ข้อมูลถูกจัดเก็บอย่างปลอดภัย</p>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 2: Main Menu ========== -->
+    <div class="page" id="page-menu">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="user-badge">
+                    <div class="avatar" id="menu-avatar">?</div>
+                    <div class="user-info-small">
+                        <div class="user-name-small" id="menu-name">-</div>
+                        <div class="user-rating-small" id="menu-rating">Rating: -</div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div class="menu-grid" style="padding-top:80px;">
+            <div class="menu-card tournament-card" onclick="startSinglePlayer()">
+                <div class="tournament-badge">🏆 Tournament</div>
+                <span class="menu-card-icon">♘</span>
+                <div class="menu-card-title">1 Player</div>
+                <div class="menu-card-desc">ความยากจะปรับตาม Rating ของคุณ</div>
+            </div>
+            <div class="menu-card tournament-card" onclick="startTwoPlayer()">
+                <div class="tournament-badge">🏆 Tournament</div>
+                <span class="menu-card-icon">♞</span>
+                <div class="menu-card-title">2 Players</div>
+                <div class="menu-card-desc">เล่นกับเพื่อนบนหน้าจอเดียวกัน</div>
+            </div>
+            <div class="menu-card" onclick="showRanking()">
+                <span class="menu-card-icon">🏆</span>
+                <div class="menu-card-title">อันดับ & Ranking</div>
+                <div class="menu-card-desc">ดูอันดับผู้เล่นทั้งหมด และ Tier ของคุณ</div>
+            </div>
+            <div class="menu-card tournament-card" onclick="showCustomMenu()">
+                <div class="tournament-badge">🏆 Tournament</div>
+                <span class="menu-card-icon">♕</span>
+                <div class="menu-card-title">Custom</div>
+                <div class="menu-card-desc">เล่นกับเพื่อนออนไลน์ พร้อมแชทแบบ Realtime</div>
+            </div>
+            <div class="menu-card" onclick="startWhiteBoard()">
+                <span class="menu-card-icon">♟</span>
+                <div class="menu-card-title">White Board</div>
+                <div class="menu-card-desc">กระดานเพียวๆ ไม่มี Rating ไม่ต้อง Login</div>
+            </div>
+            <div class="menu-card" onclick="openCheckers()">
+                <span class="menu-card-icon">♟♟</span>
+                <div class="menu-card-title">Checkers</div>
+                <div class="menu-card-desc">หมากฮอต</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 3: Hint Mode Select ========== -->
+    <div class="page" id="page-hint">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn btn-outline btn-sm" onclick="showPage('page-menu')">ย้อนกลับ</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div style="padding-top:80px; text-align:center; padding-bottom:20px;">
+            <div style="font-size:28px; font-weight:800; margin-bottom:8px;">เลือกโหมดการแสดงผล</div>
+            <div style="color:var(--muted); font-size:14px; margin-bottom:32px;">
+                คุณต้องการความช่วยเหลือในขณะเล่นหรือไม่?</div>
+        </div>
+        <div class="hint-grid">
+            <div class="hint-card" onclick="setHintMode(true)">
+                <div class="hint-card-title">โหมดช่วยเหลือ</div>
+                <div class="hint-card-desc">แสดงวิธีเดินของหมากแต่ละตัว<br>และแจ้งเตือนเมื่อโดน Check!</div>
+            </div>
+            <div class="hint-card" onclick="setHintMode(false)">
+                <div class="hint-card-title">โหมดจริงจัง</div>
+                <div class="hint-card-desc">ไม่มีคำใบ้ เล่นเหมือนกระดานจริง<br>แพ้คือแพ้เลย!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 3B: Player 2 Login ========== -->
+    <div class="page" id="page-login-p2">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn btn-outline btn-sm" onclick="showPage('page-hint')">ย้อนกลับ</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div style="padding-top:80px;">
+            <div class="card">
+                <div class="logo">
+                    <span class="logo-icon">♚</span>
+                    <div class="logo-title">ผู้เล่น <span>2</span></div>
+                    <div class="logo-sub">เข้าสู่ระบบ (ฝั่งดำ)</div>
+                </div>
+                <div class="field">
+                    <label for="inp-email-p2">อีเมล</label>
+                    <input type="email" id="inp-email-p2" placeholder="your@email.com" autocomplete="off" maxlength="120">
+                    <div class="error-msg" id="err-email-p2">รูปแบบอีเมลไม่ถูกต้อง</div>
+                </div>
+                <div class="field">
+                    <label for="inp-nick-p2">ชื่อเล่น</label>
+                    <input type="text" id="inp-nick-p2" placeholder="เช่น ChessKing42" autocomplete="off" maxlength="24" minlength="2">
+                    <div class="error-msg" id="err-nick-p2">ชื่อเล่น 2-24 ตัวอักษร (a-z, 0-9, _, -)</div>
+                </div>
+                <div id="login-error-p2" class="error-msg" style="display:none; margin-bottom:12px; font-size:14px;"></div>
+                <button class="btn" id="btn-login-p2" onclick="handleLoginP2()">เริ่มเล่น</button>
+                <p style="text-align:center; margin-top:16px; font-size:12px; color:var(--muted);">ผู้เล่น 1: <strong id="p1-name-display">-</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 4: Game Board ========== -->
+    <div class="page board-page" id="page-board">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span id="room-number-display" style="display:none;"></span>
+                <button class="btn btn-outline btn-sm" onclick="offerDraw()" id="btn-draw" style="display:none;">
+                    ขอเสมอ</button>
+                <button class="btn btn-outline btn-sm" id="btn-resign-main" onclick="confirmResign()">ยอมแพ้</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="game-layout">
+            <div class="board-wrap">
+                <div id="chessboard"></div>
+            </div>
+            <div class="sidebar">
+                <div class="info-card">
+                    <h4>ผู้เล่น</h4>
+                    <div class="player-row" id="row-black">
+                        <div class="avatar" id="black-avatar" style="background:#374151;">♚</div>
+                        <div class="player-row-info">
+                            <div class="player-row-name" id="black-name">Black</div>
+                            <div class="player-row-rating" id="black-rating">Rating: -</div>
+                        </div>
+                    </div>
+                    <div class="player-row" id="row-white">
+                        <div class="avatar" id="white-avatar">♔</div>
+                        <div class="player-row-info">
+                            <div class="player-row-name" id="white-name">White</div>
+                            <div class="player-row-rating" id="white-rating">Rating: -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="status-bar" id="status-bar">เริ่มเกม</div>
+                    <div class="bot-think" id="bot-think">
+                        <span>Thinking.....</span>
+                        <span class="think-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                    <div class="warning-banner" id="warning-banner">
+                        <span></span><span id="warning-text"></span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h4>หมากที่จับได้</h4>
+                    <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">⬜:</div>
+                    <div class="captured-row" id="captured-white"></div>
+                    <div style="font-size:11px; color:var(--muted); margin-bottom:4px; margin-top:8px;">⬛:
+                    </div>
+                    <div class="captured-row" id="captured-black"></div>
+                </div>
+
+                <!-- History (hidden in Custom mode) -->
+                <div class="info-card" id="history-card">
+                    <h4>History</h4>
+                    <div class="move-list" id="move-list"></div>
+                </div>
+
+                <!-- Chat (shown only in Custom mode) -->
+                <div class="info-card chat-card" id="chat-card" style="display:none; flex-direction:column; flex:1;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                        <h4 style="margin:0;">Chat</h4>
+                        <span id="room-badge" style="font-size:11px; color:var(--primary); font-weight:700; background:rgba(181,136,99,0.12); padding:3px 8px; border-radius:6px;"></span>
+                    </div>
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." maxlength="200" autocomplete="off">
+                        <button class="chat-send-btn" onclick="sendChatMessage()">ส่ง</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 5: Ranking ========== -->
+    <div class="page" id="page-ranking">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-outline btn-sm" onclick="showPage('page-menu')">ย้อนกลับ</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div class="ranking-wrap" style="padding-top:80px;">
+            <div class="rank-title">🏆 Leaderboard</div>
+            <div class="rank-sub">อันดับผู้เล่นทั้งหมดใน Chess Arena</div>
+            <div class="my-tier-card" id="my-tier-card"></div>
+            <div id="ranking-list">
+                <div class="spinner"></div>
+                <div class="loading-text">กำลังโหลด...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 6: Custom Menu ========== -->
+    <div class="page" id="page-custom">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn btn-outline btn-sm" onclick="showPage('page-menu')">ย้อนกลับ</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div style="padding-top:80px; text-align:center; padding-bottom:24px;">
+            <div style="font-size:32px; margin-bottom:8px;"></div>
+            <div style="font-size:28px; font-weight:800; margin-bottom:8px;">Custom Game</div>
+            <div style="color:var(--muted); font-size:14px; margin-bottom:36px;">เล่นกับเพื่อนออนไลน์ พร้อมแชทแบบ Realtime</div>
+        </div>
+        <div class="hint-grid" style="max-width:560px;">
+            <div class="hint-card" onclick="startCustomBuild()">
+                <div style="font-size:36px; margin-bottom:12px;"></div>
+                <div class="hint-card-title">Build</div>
+                <div class="hint-card-desc">สร้างห้องใหม่ รับรหัสห้อง<br>แล้วแชร์ให้เพื่อน</div>
+            </div>
+            <div class="hint-card" onclick="showJoinPanel()">
+                <div style="font-size:36px; margin-bottom:12px;"></div>
+                <div class="hint-card-title">Join</div>
+                <div class="hint-card-desc">ใส่รหัสห้องของเพื่อน<br>เพื่อเข้าร่วมเกม</div>
+            </div>
+        </div>
+        <!-- Join Panel (hidden by default) -->
+        <div id="join-panel" style="display:none; margin-top:24px; width:100%; max-width:400px; padding:0 24px;">
+            <div class="info-card" style="background:var(--card); border-radius:16px; padding:24px;">
+                <h4 style="margin-bottom:16px; text-align:center;">ใส่รหัสห้อง</h4>
+                <input type="text" id="join-room-input" placeholder="X X X X" maxlength="4"
+                    style="text-align:center; font-size:28px; font-weight:800; letter-spacing:8px;"
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <div id="join-error" class="error-msg" style="display:none; margin-bottom:12px;">ไม่พบห้องนี้ หรือห้องเต็มแล้ว</div>
+                <button class="btn" onclick="joinCustomRoom()">เข้าร่วม</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiting Overlay (Custom Build mode) -->
+    <div id="waiting-overlay" style="display:none;">
+        <div class="waiting-box">
+            <div style="font-size:32px; margin-bottom:8px;"></div>
+            <div style="font-size:20px; font-weight:800; margin-bottom:4px;">รหัสห้องของคุณ</div>
+            <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">แชร์รหัสนี้ให้เพื่อนกด Join</div>
+            <div class="room-code-display" id="waiting-room-code">----</div>
+            <button class="copy-btn" onclick="copyRoomCode()">คัดลอกรหัส</button>
+            <div style="margin-top:20px; color:var(--muted); font-size:13px;">รอเพื่อนเข้าร่วม...</div>
+            <div class="spinner" style="margin:12px auto 0;"></div>
+        </div>
+    </div>
+
+    <!-- Promotion Modal -->
+    <div class="modal-overlay" id="promo-modal">
+        <div class="modal">
+            <h3>เลื่อนขั้นเบี้ย</h3>
+            <p>เลือกหมากที่ต้องการเปลี่ยนเป็น</p>
+            <div class="promo-grid" id="promo-grid"></div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-overlay" id="gameover-modal">
+        <div class="modal">
+            <div id="gameover-icon" style="font-size:56px; margin-bottom:12px;">♟</div>
+            <h3 id="gameover-title">จบเกม</h3>
+            <p id="gameover-sub">-</p>
+            <div id="gameover-rating" style="margin:16px 0; font-size:20px; font-weight:800;"></div>
+            <div class="modal-btns">
+                <button class="btn" onclick="playAgain()">เล่นอีกครั้ง</button>
+                <button class="btn btn-outline" onclick="showPage('page-menu')">เมนูหลัก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resign Confirm Modal -->
+    <div class="modal-overlay" id="resign-modal">
+        <div class="modal">
+            <h3>ยืนยันการยอมแพ้?</h3>
+            <p>คุณแน่ใจหรือไม่ที่จะยอมแพ้ในเกมนี้?</p>
+            <div class="modal-btns" style="margin-top:20px;">
+                <button class="btn btn-danger" onclick="doResign()">ยืนยัน ยอมแพ้</button>
+                <button class="btn btn-outline" onclick="closeModal('resign-modal')">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Draw Offer Modal (shown to opponent) -->
+    <div class="modal-overlay" id="draw-offer-modal">
+        <div class="modal">
+            <h3>ขอเสมอ</h3>
+            <p id="draw-offer-text">คู่แข่งขอเสมอ — คุณยอมรับหรือไม่?</p>
+            <div class="modal-btns" style="margin-top:20px;">
+                <button class="btn" onclick="acceptDraw()">ยอมรับ</button>
+                <button class="btn btn-outline" onclick="declineDraw()">ปฏิเสธ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirm Modal -->
+    <div class="modal-overlay" id="logout-modal">
+        <div class="modal">
+            <div style="font-size:48px; margin-bottom:12px;">See You Later</div>
+            <h3>ออกจากระบบ?</h3>
+            <p id="logout-modal-sub">คุณต้องการออกจากระบบหรือไม่?</p>
+            <div class="modal-btns" style="margin-top:20px;">
+                <button class="btn btn-danger" onclick="doLogout()">ออกจากระบบ</button>
+                <button class="btn btn-outline" onclick="closeModal('logout-modal')">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+
+    
+</body>
+
+</html>

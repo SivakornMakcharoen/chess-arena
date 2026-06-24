@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>♟ Chess Arena — Checkers</title>
+<link rel="stylesheet" href="/src/checkers.css">
+</head>
+<body>
+
+<!-- ===== PAGE: MODE SELECT ===== -->
+<div class="page active" id="page-checkers-menu">
+  <div class="topbar">
+    <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
+    <button class="btn btn-outline btn-sm" onclick="goBackToChess()">ย้อนกลับ</button>
+  </div>
+  <div style="padding-top:80px;text-align:center;padding-bottom:20px">
+    <div style="font-size:36px;margin-bottom:8px">♚</div>
+    <div style="font-size:28px;font-weight:800;margin-bottom:8px">Checkers — หมากฮอต</div>
+    <div style="color:var(--muted);font-size:14px;margin-bottom:32px">เลือกโหมดการเล่น</div>
+  </div>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="startCheckersWhiteboard()">
+      <span class="mode-card-icon">♕</span>
+      <div class="mode-card-title">White Board</div>
+      <div class="mode-card-desc">2 ผู้เล่นบนเครื่องเดียว</div>
+    </div>
+    <div class="mode-card" onclick="showAIDiffPage()">
+      <span class="mode-card-icon">♕</span>
+      <div class="mode-card-title">AI</div>
+      <div class="mode-card-desc">เล่นกับ AI</div>
+    </div>
+    <div class="mode-card" onclick="showCheckersCustomMenu()">
+      <span class="mode-card-icon">♕</span>
+      <div class="mode-card-title">Custom</div>
+      <div class="mode-card-desc">เล่นกับเพื่อนออนไลน์</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: AI DIFFICULTY ===== -->
+<div class="page" id="page-ai-difficulty">
+  <div class="topbar">
+    <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
+    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
+  </div>
+  <div style="padding-top:80px;text-align:center;padding-bottom:20px">
+    <div style="font-size:36px;margin-bottom:8px">❖</div>
+    <div style="font-size:28px;font-weight:800;margin-bottom:8px">เลือกระดับ AI</div>
+    <div style="color:var(--muted);font-size:14px;margin-bottom:32px">ยิ่งยาก ยิ่งสนุก</div>
+  </div>
+  <div class="diff-grid">
+    <div class="diff-card beginner" onclick="startCheckersAI('beginner')">
+      <span class="diff-card-icon">♝</span>
+      <div class="diff-card-title" style="color:#22C55E">Beginner</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
+
+    </div>
+    <div class="diff-card intermediate" onclick="startCheckersAI('intermediate')">
+      <span class="diff-card-icon">♕</span>
+      <div class="diff-card-title" style="color:#FBB824">Intermediate</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
+
+    </div>
+    <div class="diff-card advanced" onclick="startCheckersAI('advanced')">
+      <span class="diff-card-icon">♔</span>
+      <div class="diff-card-title" style="color:#EF4444">Advanced</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: CUSTOM MENU ===== -->
+<div class="page" id="page-checkers-custom">
+  <div class="topbar">
+    <div class="topbar-logo">♟ <span>Checkers</span></div>
+    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
+  </div>
+  <div style="padding-top:80px;text-align:center;padding-bottom:24px">
+    <div style="font-size:28px;font-weight:800;margin-bottom:8px">Custom Game</div>
+    <div style="color:var(--muted);font-size:14px;margin-bottom:36px">เล่นกับเพื่อนออนไลน์ พร้อมแชทแบบ Realtime</div>
+  </div>
+  <div class="hint-grid" style="max-width:560px">
+    <div class="hint-card" onclick="checkersCustomBuild()">
+      <div class="hint-card-title">Build</div>
+      <div class="hint-card-desc">สร้างห้องใหม่ รับรหัสห้อง<br>แล้วแชร์ให้เพื่อน</div>
+    </div>
+    <div class="hint-card" onclick="showCheckersJoinPanel()">
+      <div class="hint-card-title">Join</div>
+      <div class="hint-card-desc">ใส่รหัสห้องของเพื่อน<br>เพื่อเข้าร่วมเกม</div>
+    </div>
+  </div>
+  <div id="checkers-join-panel" style="display:none;margin-top:24px;width:100%;max-width:400px;padding:0 24px">
+    <div class="info-card" style="border-radius:16px;padding:24px">
+      <h4 style="margin-bottom:16px;text-align:center;font-size:16px;color:var(--text)">ใส่รหัสห้อง</h4>
+      <input type="text" id="checkers-join-input" placeholder="X X X X" maxlength="4"
+        style="text-align:center;font-size:28px;font-weight:800;letter-spacing:8px"
+        oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <div id="checkers-join-error" class="error-msg">ไม่พบห้องนี้ หรือห้องเต็มแล้ว</div>
+      <button class="btn" onclick="checkersJoinRoom()">เข้าร่วม</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: GAME BOARD ===== -->
+<div class="page board-page" id="page-checkers-board">
+  <div class="topbar">
+    <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
+    <div class="topbar-custom-btns" id="topbar-normal-btns">
+      <span id="room-number-display"></span>
+      <button class="btn btn-outline btn-sm" id="btn-checkers-back" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
+    </div>
+    <!-- Custom mode buttons -->
+    <div class="topbar-custom-btns" id="topbar-custom-btns" style="display:none">
+      <span id="room-number-display-c2"></span>
+      <button class="btn btn-warn btn-sm" onclick="cRequestResign()">ยอมแพ้</button>
+      <button class="btn btn-danger btn-sm" onclick="cRequestLeave()">ออกจากเกม</button>
+    </div>
+  </div>
+  <div class="game-layout">
+    <div class="board-wrap">
+      <div id="checkerboard"></div>
+    </div>
+    <div class="sidebar">
+      <div class="info-card">
+        <h4>ผู้เล่น</h4>
+        <div class="player-row" id="row-black-c">
+          <div class="avatar" style="background:#374151">⬛</div>
+          <div>
+            <div class="player-row-name" id="black-name-c">ดำ</div>
+            <div class="player-row-rating" id="black-sub-c"></div>
+          </div>
+        </div>
+        <div class="player-row" id="row-red-c">
+          <div class="avatar" style="background:#ffffffb7">⬜</div>
+          <div>
+            <div class="player-row-name" id="red-name-c">ขาว</div>
+            <div class="player-row-rating" id="red-sub-c"></div>
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="status-bar" id="status-bar-c">เริ่มเกม</div>
+        <div class="bot-think" id="bot-think-c">
+          <span>AI กำลังคิด</span>
+          <span class="think-dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+      <div class="info-card">
+        <h4>หมากที่จับได้</h4>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">◻️:</div>
+        <div class="captured-row" id="captured-red-c"></div>
+        <div style="font-size:11px;color:var(--muted);margin:8px 0 4px">⬛:</div>
+        <div class="captured-row" id="captured-black-c"></div>
+      </div>
+      <!-- AI move log (AI mode only) -->
+      <div class="info-card chat-card" id="chat-card-c" style="display:none;flex-direction:column;flex:1">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h4 style="margin:0">Chat</h4>
+          <span id="room-badge-c" style="font-size:11px;color:var(--primary);font-weight:700;background:rgba(181,136,99,.12);padding:3px 8px;border-radius:6px"></span>
+        </div>
+        <div class="chat-messages" id="chat-messages-c"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input-c" placeholder="พิมพ์ข้อความ..." maxlength="200" autocomplete="off">
+          <button class="chat-send-btn" onclick="cSendChat()">ส่ง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Waiting Overlay -->
+<div id="waiting-overlay">
+  <div class="waiting-box">
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">รหัสห้องของคุณ</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">แชร์รหัสนี้ให้เพื่อนกด Join</div>
+    <div class="room-code-display" id="waiting-room-code">----</div>
+    <button class="copy-btn" onclick="cCopyRoomCode()">คัดลอกรหัส</button>
+    <div style="margin-top:20px;color:var(--muted);font-size:13px">รอเพื่อนเข้าร่วม...</div>
+    <div style="width:32px;height:32px;border:3px solid rgba(181,136,99,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:12px auto 0"></div>
+  </div>
+</div>
+
+<!-- Game Over Modal -->
+<div class="modal-overlay" id="gameover-modal-c">
+  <div class="modal">
+    <div id="gameover-icon-c" style="font-size:56px;margin-bottom:12px">🔴</div>
+    <h3 id="gameover-title-c">จบเกม</h3>
+    <p id="gameover-sub-c">-</p>
+    <div class="modal-btns">
+      <button class="btn" id="btn-play-again-c" onclick="cPlayAgain()">เล่นอีกครั้ง</button>
+      <button class="btn btn-outline" onclick="cGoMainMenu()">เมนูหลัก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Leave Modal -->
+<div class="modal-overlay" id="confirm-leave-modal">
+  <div class="modal">
+    <div style="font-size:48px;margin-bottom:12px">🔚</div>
+    <h3>ออกจากเกม?</h3>
+    <p>หากออกจากเกม อีกฝ่ายจะได้รับแจ้งว่าคุณออกไปแล้ว</p>
+    <div class="modal-btns">
+      <button class="btn btn-danger" onclick="cConfirmLeave()">ยืนยัน ออก</button>
+      <button class="btn btn-outline" onclick="closeModal('confirm-leave-modal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Resign Modal -->
+<div class="modal-overlay" id="confirm-resign-modal">
+  <div class="modal">
+    <div style="font-size:48px;margin-bottom:12px">🏳️</div>
+    <h3>ยอมแพ้?</h3>
+    <p>คุณแน่ใจว่าต้องการยอมแพ้และออกจากเกมหรือไม่?</p>
+    <div class="modal-btns">
+      <button class="btn btn-warn" onclick="cConfirmResign()">ยืนยัน ยอมแพ้</button>
+      <button class="btn btn-outline" onclick="closeModal('confirm-resign-modal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Opponent Left Modal -->
+<div class="modal-overlay" id="opponent-left-modal">
+  <div class="modal">
+    <div id="opp-left-icon" style="font-size:48px;margin-bottom:12px">🚪</div>
+    <h3 id="opp-left-title">คู่ต่อสู้ออกจากเกม</h3>
+    <p id="opp-left-sub">อีกฝ่ายได้ออกจากเกมแล้ว</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="cGoMainMenu()">ไปหน้าหลัก</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/checkers-main.js"></script>
+</body>
+</html>
