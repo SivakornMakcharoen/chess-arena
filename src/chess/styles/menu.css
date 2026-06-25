@@ -1,0 +1,127 @@
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            width: 100%;
+            max-width: 700px;
+            padding: 24px;
+        }
+
+        .menu-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 32px 24px;
+            cursor: pointer;
+            border: 1.5px solid rgba(181, 136, 99, 0.1);
+            transition: all 0.2s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(181, 136, 99, 0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .menu-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-card:hover::before {
+            opacity: 1;
+        }
+
+        .menu-card-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .menu-card-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .menu-card-desc {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .menu-card.span2 {
+            grid-column: span 2;
+        }
+
+        /* Tournament badge on menu cards */
+        .tournament-card {
+            position: relative;
+        }
+
+        .tournament-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #166534, #15803d, #22c55e);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            padding: 4px 9px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.45);
+            border: 1px solid rgba(255,255,255,0.15);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .hint-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            width: 100%;
+            max-width: 700px;
+            padding: 24px;
+        }
+
+        .hint-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 32px 20px;
+            cursor: pointer;
+            border: 1.5px solid rgba(181, 136, 99, 0.1);
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .hint-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .hint-card-icon {
+            font-size: 48px;
+            margin-bottom: 14px;
+        }
+
+        .hint-card-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .hint-card-desc {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+

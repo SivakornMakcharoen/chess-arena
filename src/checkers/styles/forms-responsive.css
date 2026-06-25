@@ -12,3 +12,35 @@ input::placeholder{color:var(--muted)}
   .mode-grid{grid-template-columns:1fr}
   .diff-grid{grid-template-columns:1fr}
 }
+
+
+/* HTML structure helpers */
+.is-hidden{display:none}
+.page-hero{padding-top:80px;text-align:center;padding-bottom:20px}
+.page-hero-compact{padding-bottom:24px}
+.page-hero-icon{font-size:36px;margin-bottom:8px}
+.page-hero-title{font-size:28px;font-weight:800;margin-bottom:8px}
+.page-hero-subtitle{color:var(--muted);font-size:14px;margin-bottom:32px}
+.page-hero-subtitle-loose{margin-bottom:36px}
+.hint-grid-narrow{max-width:560px}
+.diff-title-beginner{color:#22C55E}
+.diff-title-intermediate{color:#FBB824}
+.diff-title-advanced{color:#EF4444}
+.join-panel{display:none;margin-top:24px;width:100%;max-width:400px;padding:0 24px}
+.join-card{border-radius:16px;padding:24px}
+.join-title{margin-bottom:16px;text-align:center;font-size:16px;color:var(--text)}
+.room-code-input{text-align:center;font-size:28px;font-weight:800;letter-spacing:8px}
+.avatar-dark{background:#374151}
+.avatar-light{background:#ffffffb7}
+.captured-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.captured-label-spaced{margin:8px 0 4px}
+.chat-card.is-hidden{display:none}
+.chat-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.flush-heading{margin:0}
+.room-badge{font-size:11px;color:var(--primary);font-weight:700;background:rgba(181,136,99,.12);padding:3px 8px;border-radius:6px}
+.waiting-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.waiting-subtitle{font-size:13px;color:var(--muted);margin-bottom:8px}
+.waiting-note{margin-top:20px;color:var(--muted);font-size:13px}
+.spinner{width:32px;height:32px;border:3px solid rgba(181,136,99,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:12px auto 0}
+.modal-icon{font-size:48px;margin-bottom:12px}
+.modal-icon-large{font-size:56px}

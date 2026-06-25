@@ -1,0 +1,63 @@
+        @media (max-width: 860px) {
+            .game-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .board-wrap {
+                width: min(94vw, 560px);
+            }
+
+            .sidebar {
+                width: min(94vw, 560px);
+                max-width: none;
+            }
+
+            .menu-grid,
+            .hint-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-card.span2 {
+                grid-column: span 1;
+            }
+        }
+
+
+
+/* HTML structure helpers */
+.is-hidden{display:none}
+.error-msg-block{display:none;margin-bottom:12px;font-size:14px}
+.form-note{text-align:center;margin-top:16px;font-size:12px;color:var(--muted)}
+.topbar-actions{display:flex;align-items:center;gap:12px}
+.topbar-actions-tight{gap:10px}
+.menu-grid-offset,.page-offset{padding-top:80px}
+.page-hero{padding-top:80px;text-align:center;padding-bottom:20px}
+.page-hero-compact{padding-bottom:24px}
+.page-hero-icon{font-size:32px;margin-bottom:8px}
+.page-hero-icon-empty{min-height:32px}
+.page-hero-title{font-size:28px;font-weight:800;margin-bottom:8px}
+.page-hero-subtitle{color:var(--muted);font-size:14px;margin-bottom:32px}
+.page-hero-subtitle-loose{margin-bottom:36px}
+.hint-grid-narrow{max-width:560px}
+.hint-card-icon-spacer{font-size:36px;margin-bottom:12px;min-height:36px}
+.avatar-dark{background:#374151}
+.captured-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.captured-label-spaced{margin-top:8px}
+.chat-card.is-hidden{display:none}
+.chat-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.flush-heading{margin:0}
+.room-badge{font-size:11px;color:var(--primary);font-weight:700;background:rgba(181,136,99,.12);padding:3px 8px;border-radius:6px}
+.join-panel{display:none;margin-top:24px;width:100%;max-width:400px;padding:0 24px}
+.join-card{background:var(--card);border-radius:16px;padding:24px}
+.join-title{margin-bottom:16px;text-align:center}
+.room-code-input{text-align:center;font-size:28px;font-weight:800;letter-spacing:8px}
+.join-error{display:none;margin-bottom:12px}
+.waiting-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.waiting-subtitle{font-size:13px;color:var(--muted);margin-bottom:8px}
+.waiting-note{margin-top:20px;color:var(--muted);font-size:13px}
+.modal-icon{font-size:48px;margin-bottom:12px}
+.modal-icon-large{font-size:56px}
+.modal-icon-text{font-size:48px}
+.gameover-rating{margin:16px 0;font-size:20px;font-weight:800}
+.modal-btns-spaced{margin-top:20px}

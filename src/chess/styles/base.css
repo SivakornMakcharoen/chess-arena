@@ -1,0 +1,255 @@
+
+        :root {
+            --bg: #1F2937;
+            --primary: #B58863;
+            --primary-hover: #9A744F;
+            --secondary: #F0D9B5;
+            --accent: #22C55E;
+            --text: #F9FAFB;
+            --muted: #94A3B8;
+            --card: #273244;
+            --danger: #EF4444;
+            --board-light: #EEEED2;
+            --board-dark: #769656;
+            --move-highlight: #F6F669;
+            --move-highlight-soft: rgba(246, 246, 105, .55);
+            --panel: #262522;
+            --panel-2: #312E2B;
+            --gold: #F59E0B;
+            --silver: #94A3B8;
+            --bronze: #CD7C2F;
+            --platinum: #67E8F9;
+            --emerald: #34D399;
+            --diamond: #A78BFA;
+            --crown: #F59E0B;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page {
+            display: none;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .page.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(181, 136, 99, 0.15);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            font-size: 56px;
+            display: block;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 20px rgba(181, 136, 99, 0.5));
+        }
+
+        .logo-title {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-title span {
+            color: var(--primary);
+        }
+
+        .logo-sub {
+            color: var(--muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 15px;
+            padding: 14px 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            margin-bottom: 16px;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(181, 136, 99, 0.15);
+        }
+
+        input::placeholder {
+            color: var(--muted);
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            letter-spacing: 0.3px;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 20px rgba(181, 136, 99, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.99);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(181, 136, 99, 0.1);
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #DC2626;
+        }
+
+        .btn-sm {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: -10px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(181, 136, 99, 0.15);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-logo {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .topbar-logo span {
+            color: var(--primary);
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card);
+            border-radius: 50px;
+            padding: 6px 14px 6px 10px;
+            border: 1px solid rgba(181, 136, 99, 0.2);
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .user-info-small {
+            line-height: 1.2;
+        }
+
+        .user-name-small {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .user-rating-small {
+            font-size: 11px;
+            color: var(--muted);
+        }
