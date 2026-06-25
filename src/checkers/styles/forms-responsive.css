@@ -1,0 +1,14 @@
+input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:var(--text);font-size:15px;padding:14px 16px;outline:none;transition:border-color .2s;margin-bottom:16px}
+input:focus{border-color:var(--primary)}
+input::placeholder{color:var(--muted)}
+.error-msg{color:var(--danger);font-size:13px;display:none;margin-bottom:8px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:760px){
+  .game-layout{flex-direction:column;align-items:center}
+  .board-wrap{width:min(94vw,500px)}
+  .sidebar{width:min(94vw,500px);max-width:none}
+  .mode-grid{grid-template-columns:1fr}
+  .diff-grid{grid-template-columns:1fr}
+}

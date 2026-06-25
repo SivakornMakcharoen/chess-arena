@@ -1,0 +1,33 @@
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:200;display:none}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:16px;padding:32px;text-align:center;border:1px solid rgba(181,136,99,.3);box-shadow:0 25px 60px rgba(0,0,0,.6);max-width:420px;width:90%}
+.modal h3{font-size:22px;margin-bottom:8px}
+.modal p{color:var(--muted);font-size:14px;margin-bottom:24px}
+.modal-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.modal-btns .btn{width:auto;min-width:120px}
+
+.chat-card{display:flex;flex-direction:column;min-height:220px}
+.chat-messages{flex:1;overflow-y:auto;min-height:140px;max-height:220px;padding:4px 0;margin-bottom:10px;scrollbar-width:thin}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+.chat-msg{padding:5px 8px;border-radius:8px;margin-bottom:6px;font-size:13px;line-height:1.4;word-break:break-word}
+.chat-msg.me{background:rgba(181,136,99,.18);text-align:right}
+.chat-msg.them{background:rgba(255,255,255,.06)}
+.chat-msg.system{background:transparent;color:var(--muted);font-size:11px;text-align:center;font-style:italic}
+.chat-msg-name{font-size:10px;font-weight:700;color:var(--primary);margin-bottom:2px}
+.chat-input-row{display:flex;gap:6px;align-items:center}
+.chat-input-row input{flex:1;margin-bottom:0;padding:9px 12px;font-size:13px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:var(--text);outline:none}
+.chat-input-row input:focus{border-color:var(--primary)}
+.chat-send-btn{padding:9px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.chat-send-btn:hover{background:var(--primary-hover)}
+#room-number-display{font-size:13px;font-weight:800;color:var(--primary);background:rgba(181,136,99,.13);padding:4px 12px;border-radius:8px;border:1px solid rgba(181,136,99,.25);letter-spacing:3px;display:none}
+
+#waiting-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;align-items:center;justify-content:center;display:none}
+#waiting-overlay.active{display:flex}
+.waiting-box{background:var(--card);border-radius:20px;padding:40px 48px;text-align:center;border:1px solid rgba(181,136,99,.2);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.room-code-display{font-size:56px;font-weight:900;letter-spacing:10px;color:var(--primary);margin:16px 0;text-shadow:0 0 30px rgba(181,136,99,.4)}
+.copy-btn{background:rgba(181,136,99,.15);border:1px solid rgba(181,136,99,.3);color:var(--primary);padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;transition:background .2s}
+.copy-btn:hover{background:rgba(181,136,99,.25)}
+
+/* custom topbar buttons */
+.topbar-custom-btns{display:flex;align-items:center;gap:8px}
