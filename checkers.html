@@ -109,11 +109,13 @@
     <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
     <div class="topbar-custom-btns" id="topbar-normal-btns">
       <span id="room-number-display"></span>
+      <button class="btn btn-outline btn-sm" id="btn-sound-toggle" onclick="cToggleSound()">🔊 เสียง</button>
       <button class="btn btn-outline btn-sm" id="btn-checkers-back" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
     </div>
     <!-- Custom mode buttons -->
     <div class="topbar-custom-btns" id="topbar-custom-btns" style="display:none">
       <span id="room-number-display-c2"></span>
+      <button class="btn btn-outline btn-sm" id="btn-sound-toggle-custom" onclick="cToggleSound()">🔊 เสียง</button>
       <button class="btn btn-warn btn-sm" onclick="cRequestResign()">ยอมแพ้</button>
       <button class="btn btn-danger btn-sm" onclick="cRequestLeave()">ออกจากเกม</button>
     </div>
