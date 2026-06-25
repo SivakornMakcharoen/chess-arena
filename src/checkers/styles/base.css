@@ -1,0 +1,27 @@
+:root {
+  --bg:#1F2937;--primary:#B58863;--primary-hover:#9A744F;
+  --accent:#22C55E;--text:#F9FAFB;--muted:#94A3B8;
+  --card:#273244;--danger:#ffffff;
+  --board-light:#EEEED2;--board-dark:#769656;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center}
+
+.page{display:none;width:100%;min-height:100vh}
+.page.active{display:flex;align-items:center;justify-content:center;flex-direction:column}
+
+.topbar{position:fixed;top:0;left:0;right:0;background:rgba(31,41,55,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(181,136,99,.15);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100}
+.topbar-logo{font-size:20px;font-weight:800}
+.topbar-logo span{color:var(--primary)}
+
+.btn{padding:14px 20px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s,transform .1s,box-shadow .2s;letter-spacing:.3px;width:100%}
+.btn:hover{background:var(--primary-hover);box-shadow:0 4px 20px rgba(181,136,99,.4)}
+.btn:active{transform:scale(.99)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-outline{background:transparent;border:1.5px solid var(--primary);color:var(--primary)}
+.btn-outline:hover{background:rgba(181,136,99,.1);box-shadow:none}
+.btn-sm{width:auto;padding:8px 16px;font-size:13px}
+.btn-danger{background:#DC2626;}
+.btn-danger:hover{background:#B91C1C;}
+.btn-warn{background:#D97706;}
+.btn-warn:hover{background:#B45309;}

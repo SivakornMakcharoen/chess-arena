@@ -1,0 +1,26 @@
+.mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:860px;padding:24px}
+.mode-card{background:var(--card);border-radius:16px;padding:32px 20px;cursor:pointer;border:1.5px solid rgba(181,136,99,.1);transition:all .2s;text-align:center}
+.mode-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.mode-card-icon{font-size:48px;margin-bottom:12px;display:block}
+.mode-card-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.mode-card-desc{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* AI Difficulty page */
+.diff-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;width:100%;max-width:720px;padding:24px}
+.diff-card{background:var(--card);border-radius:16px;padding:36px 20px;cursor:pointer;border:1.5px solid rgba(181,136,99,.1);transition:all .2s;text-align:center}
+.diff-card:hover{border-color:var(--primary);transform:translateY(-3px);box-shadow:0 16px 48px rgba(0,0,0,.35)}
+.diff-card-icon{font-size:52px;margin-bottom:14px;display:block}
+.diff-card-title{font-size:20px;font-weight:800;margin-bottom:8px}
+.diff-card-desc{font-size:13px;color:var(--muted);line-height:1.6}
+.diff-card.beginner{border-color:rgba(34,197,94,.2)}
+.diff-card.beginner:hover{border-color:#22C55E;box-shadow:0 16px 48px rgba(34,197,94,.2)}
+.diff-card.intermediate{border-color:rgba(251,191,36,.2)}
+.diff-card.intermediate:hover{border-color:#FBB824;box-shadow:0 16px 48px rgba(251,191,36,.2)}
+.diff-card.advanced{border-color:rgba(239,68,68,.2)}
+.diff-card.advanced:hover{border-color:#EF4444;box-shadow:0 16px 48px rgba(239,68,68,.2)}
+
+.hint-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:700px;padding:24px}
+.hint-card{background:var(--card);border-radius:16px;padding:32px 20px;cursor:pointer;border:1.5px solid rgba(181,136,99,.1);transition:all .2s;text-align:center}
+.hint-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.hint-card-title{font-size:18px;font-weight:800;margin-bottom:8px}
+.hint-card-desc{font-size:13px;color:var(--muted);line-height:1.6}
