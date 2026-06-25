@@ -442,7 +442,7 @@ const CheckersBot = {
     }
 
     // Advanced: full engine — depth 10, 800ms limit, no randomness
-    return this._iterativeDeepening(game, 14, 2000);
+    return this._iterativeDeepening(game, 99, 10000);
   }
 };
 
