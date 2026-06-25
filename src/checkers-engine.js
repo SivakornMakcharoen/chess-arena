@@ -267,85 +267,85 @@ const CheckersBot = {
 
   // ── Evaluation ──────────────────────────────────────────
   evaluate(game) {
-    if (game.status === 'red_wins') return 100000;
-    if (game.status === 'black_wins') return -100000;
+  if (game.status === 'red_wins') return 100000;
+  if (game.status === 'black_wins') return -100000;
 
-    let score = 0;
-    let redCount = 0, blackCount = 0;
-    let redKings = 0, blackKings = 0;
+  let score = 0;
+  let redCount = 0, blackCount = 0;
+  let redKings = 0, blackKings = 0;
 
+  for (let i = 0; i < 64; i++) {
+    const p = game.board[i];
+    if (!p) continue;
+    const r = Math.floor(i / 8), c = i % 8;
+
+    if (p.color === 'red') {
+      redCount++;
+      const advance = 7 - r;
+      const posBonus = this.POS_TABLE[i] * 2;
+      const advBonus = advance * 8;
+      if (p.king) { redKings++; score += 300 + posBonus; }
+      else { score += 100 + advBonus + posBonus; }
+      if (r === 7) score += 15; // back-row defense เพิ่มขึ้น
+      if (c >= 2 && c <= 5 && r >= 2 && r <= 5) score += 8; // center control เพิ่มขึ้น
+      // ริมกระดาน — ถูกกินยากขึ้น
+      if (c === 0 || c === 7) score += 6;
+      // กันหมากถูกกินฟรี
+      const threatened = game._getAllJumps('black').some(m => m.captured.includes(i));
+      if (threatened) score -= 80;
+    } else {
+      blackCount++;
+      const advance = r;
+      const posBonus = this.POS_TABLE[63 - i] * 2;
+      const advBonus = advance * 8;
+      if (p.king) { blackKings++; score -= 300 + posBonus; }
+      else { score -= 100 + advBonus + posBonus; }
+      if (r === 0) score -= 15;
+      if (c >= 2 && c <= 5 && r >= 2 && r <= 5) score -= 8;
+      if (c === 0 || c === 7) score -= 6;
+      const threatened = game._getAllJumps('red').some(m => m.captured.includes(i));
+      if (threatened) score += 80;
+    }
+  }
+
+  // mobility
+  const myMoves = game.validMoves.length;
+  if (game.turn === 'red') score += myMoves * 5; // เพิ่มจาก 3
+  else score -= myMoves * 5;
+
+  // capture threats
+  const opponentJumps = game._getAllJumps(game.turn === 'red' ? 'black' : 'red');
+  if (game.turn === 'red') score += opponentJumps.length * 12; // เพิ่มจาก 8
+  else score -= opponentJumps.length * 12;
+
+  // endgame
+  const totalPieces = redCount + blackCount;
+  if (totalPieces <= 4) { // ลดจาก 6
     for (let i = 0; i < 64; i++) {
       const p = game.board[i];
-      if (!p) continue;
-      const r = Math.floor(i / 8), c = i % 8;
-
-      // --- material value ---
-      // king = 300, man = 100, but also give bonus for advancement
+      if (!p || !p.king) continue;
       if (p.color === 'red') {
-        redCount++;
-        const advance = 7 - r; // red goes up (row 7 → 0)
-        const posBonus = this.POS_TABLE[i] * 2;
-        const advBonus = advance * 8;
-        if (p.king) { redKings++; score += 300 + posBonus; }
-        else { score += 100 + advBonus + posBonus; }
-
-        // back-row defense bonus — keep back row when you have material advantage
-        if (r === 7) score += 5;
-        // center control
-        if (c >= 2 && c <= 5 && r >= 2 && r <= 5) score += 4;
-      } else {
-        blackCount++;
-        const advance = r; // black goes down (row 0 → 7)
-        const posBonus = this.POS_TABLE[63 - i] * 2;
-        const advBonus = advance * 8;
-        if (p.king) { blackKings++; score -= 300 + posBonus; }
-        else { score -= 100 + advBonus + posBonus; }
-
-        if (r === 0) score -= 5;
-        if (c >= 2 && c <= 5 && r >= 2 && r <= 5) score -= 4;
-      }
-    }
-
-    // --- mobility: more moves = better ---
-    const myMoves = game.validMoves.length;
-    if (game.turn === 'red') score += myMoves * 3;
-    else score -= myMoves * 3;
-
-    // --- capture threats: penalise being in danger ---
-    const opponentJumps = game._getAllJumps(game.turn === 'red' ? 'black' : 'red');
-    if (game.turn === 'red') score += opponentJumps.length * 8;
-    else score -= opponentJumps.length * 8;
-
-    // --- endgame: push kings to corners when winning ---
-    const totalPieces = redCount + blackCount;
-    if (totalPieces <= 6) {
-      // aggression bonus: move kings towards opponent pieces
-      for (let i = 0; i < 64; i++) {
-        const p = game.board[i];
-        if (!p || !p.king) continue;
-        if (p.color === 'red') {
-          // find closest black piece
-          let minDist = 99;
-          for (let j = 0; j < 64; j++) {
-            if (game.board[j]?.color === 'black') {
-              minDist = Math.min(minDist, Math.abs(Math.floor(i/8)-Math.floor(j/8)) + Math.abs(i%8 - j%8));
-            }
+        let minDist = 99;
+        for (let j = 0; j < 64; j++) {
+          if (game.board[j]?.color === 'black') {
+            minDist = Math.min(minDist, Math.abs(Math.floor(i/8)-Math.floor(j/8)) + Math.abs(i%8 - j%8));
           }
-          score -= minDist * 5;
-        } else {
-          let minDist = 99;
-          for (let j = 0; j < 64; j++) {
-            if (game.board[j]?.color === 'red') {
-              minDist = Math.min(minDist, Math.abs(Math.floor(i/8)-Math.floor(j/8)) + Math.abs(i%8 - j%8));
-            }
-          }
-          score += minDist * 5;
         }
+        score -= minDist * 8; // เพิ่มจาก 5
+      } else {
+        let minDist = 99;
+        for (let j = 0; j < 64; j++) {
+          if (game.board[j]?.color === 'red') {
+            minDist = Math.min(minDist, Math.abs(Math.floor(i/8)-Math.floor(j/8)) + Math.abs(i%8 - j%8));
+          }
+        }
+        score += minDist * 8;
       }
     }
+  }
 
-    return score;
-  },
+  return score;
+},
 
   // ── Clone ────────────────────────────────────────────────
   _clone(game) {
@@ -442,7 +442,7 @@ const CheckersBot = {
     }
 
     // Advanced: full engine — depth 10, 800ms limit, no randomness
-    return this._iterativeDeepening(game, 99, 10000);
+    return this._iterativeDeepening(game, 99, 3000);
   }
 };
 
