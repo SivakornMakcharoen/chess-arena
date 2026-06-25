@@ -68,10 +68,10 @@ class Checkers {
 
   reset() {
     this.board = Array(64).fill(null);
-    for (let r=1; r<3; r++) for (let c=0; c<8; c++) {
+    for (let r=0; r<2; r++) for (let c=0; c<8; c++) {
       if ((r+c)%2===1) this.board[r*8+c] = {color:'black', king:false};
     }
-    for (let r=5; r<7; r++) for (let c=0; c<8; c++) {
+    for (let r=6; r<8; r++) for (let c=0; c<8; c++) {
       if ((r+c)%2===1) this.board[r*8+c] = {color:'red', king:false};
     }
     this.turn = 'red';
