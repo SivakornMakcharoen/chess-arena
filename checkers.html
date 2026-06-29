@@ -12,7 +12,7 @@
 <div class="page active" id="page-checkers-menu">
   <div class="topbar">
     <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
-    <button class="btn btn-outline btn-sm" onclick="goBackToChess()">戻る</button>
+    <button class="btn btn-outline btn-sm" onclick="goBackToChess()">ย้อนกลับ</button>
   </div>
   <div class="page-hero">
     <div class="page-hero-icon">♚</div>
@@ -23,17 +23,17 @@
     <div class="mode-card" onclick="startCheckersWhiteboard()">
       <span class="mode-card-icon">♕</span>
       <div class="mode-card-title">White Board</div>
-      <div class="mode-card-desc">2人プレイ</div>
+      <div class="mode-card-desc">2 ผู้เล่นบนเครื่องเดียว</div>
     </div>
     <div class="mode-card" onclick="showAIDiffPage()">
       <span class="mode-card-icon">♕</span>
       <div class="mode-card-title">AI</div>
-      <div class="mode-card-desc">AIと対戦</div>
+      <div class="mode-card-desc">เล่นกับ AI</div>
     </div>
     <div class="mode-card" onclick="showCheckersCustomMenu()">
       <span class="mode-card-icon">♕</span>
       <div class="mode-card-title">Custom</div>
-      <div class="mode-card-desc">オンライン</div>
+      <div class="mode-card-desc">เล่นกับเพื่อนออนไลน์</div>
     </div>
   </div>
 </div>
@@ -42,7 +42,7 @@
 <div class="page" id="page-ai-difficulty">
   <div class="topbar">
     <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
-    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">戻る</button>
+    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
   </div>
   <div class="page-hero">
     <div class="page-hero-icon">❖</div>
@@ -53,19 +53,19 @@
     <div class="diff-card beginner" onclick="startCheckersAI('beginner')">
       <span class="diff-card-icon">♝</span>
       <div class="diff-card-title diff-title-beginner">Beginner</div>
-      <div class="mode-card-desc">初級</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
 
     </div>
     <div class="diff-card intermediate" onclick="startCheckersAI('intermediate')">
       <span class="diff-card-icon">♕</span>
       <div class="diff-card-title diff-title-intermediate">Intermediate</div>
-      <div class="mode-card-desc">中級（</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
 
     </div>
     <div class="diff-card advanced" onclick="startCheckersAI('advanced')">
       <span class="diff-card-icon">♔</span>
       <div class="diff-card-title diff-title-advanced">Advanced</div>
-      <div class="mode-card-desc">上級</div>
+      <div class="mode-card-desc">- - - - - - - - - - - - - - </div>
 
     </div>
   </div>
@@ -75,7 +75,7 @@
 <div class="page" id="page-checkers-custom">
   <div class="topbar">
     <div class="topbar-logo">♟ <span>Checkers</span></div>
-    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">戻る</button>
+    <button class="btn btn-outline btn-sm" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
   </div>
   <div class="page-hero page-hero-compact">
     <div class="page-hero-title">Custom Game</div>
@@ -84,16 +84,16 @@
   <div class="hint-grid hint-grid-narrow">
     <div class="hint-card" onclick="checkersCustomBuild()">
       <div class="hint-card-title">Build</div>
-      <div class="hint-card-desc">新しいルームを作成<br>ルームコードを友達に共有</div>
+      <div class="hint-card-desc">สร้างห้องใหม่ รับรหัสห้อง<br>แล้วแชร์ให้เพื่อน</div>
     </div>
     <div class="hint-card" onclick="showCheckersJoinPanel()">
       <div class="hint-card-title">Join</div>
-      <div class="hint-card-desc">友達のルームコードを入力<br>ゲームに参加</div>
+      <div class="hint-card-desc">ใส่รหัสห้องของเพื่อน<br>เพื่อเข้าร่วมเกม</div>
     </div>
   </div>
   <div id="checkers-join-panel" class="join-panel">
     <div class="info-card join-card">
-      <h4 class="join-title">ルームコードを入力</h4>
+      <h4 class="join-title">ใส่รหัสห้อง</h4>
       <input type="text" id="checkers-join-input" placeholder="X X X X" maxlength="4"
         class="room-code-input"
         oninput="this.value=this.value.replace(/[^0-9]/g,'')">
@@ -109,13 +109,13 @@
     <div class="topbar-logo">♟ Chess <span>Arena</span> — <span>Checkers</span></div>
     <div class="topbar-custom-btns" id="topbar-normal-btns">
       <span id="room-number-display"></span>
-      <button class="btn btn-outline btn-sm" id="btn-sound-toggle" onclick="cToggleSound()">🔊サウンド </button>
-      <button class="btn btn-outline btn-sm" id="btn-checkers-back" onclick="showPage('page-checkers-menu')">戻る</button>
+      <button class="btn btn-outline btn-sm" id="btn-sound-toggle" onclick="cToggleSound()">🔊 เสียง</button>
+      <button class="btn btn-outline btn-sm" id="btn-checkers-back" onclick="showPage('page-checkers-menu')">ย้อนกลับ</button>
     </div>
     <!-- Custom mode buttons -->
     <div class="topbar-custom-btns is-hidden" id="topbar-custom-btns">
       <span id="room-number-display-c2"></span>
-      <button class="btn btn-outline btn-sm" id="btn-sound-toggle-custom" onclick="cToggleSound()">🔊 サウンド</button>
+      <button class="btn btn-outline btn-sm" id="btn-sound-toggle-custom" onclick="cToggleSound()">🔊 เสียง</button>
       <button class="btn btn-warn btn-sm" onclick="cRequestResign()">ยอมแพ้</button>
       <button class="btn btn-danger btn-sm" onclick="cRequestLeave()">ออกจากเกม</button>
     </div>
