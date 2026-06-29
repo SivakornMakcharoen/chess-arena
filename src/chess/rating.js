@@ -18,3 +18,4 @@ export const Rating = {
         return { name: 'Bronze', icon: '🥉', class: 'tier-bronze', color: '#CD7C2F' };
     }
 };
+

@@ -100,23 +100,23 @@ export class CheckersApp {
     this.botBusy = true;
     setBotThinking(true);
 
-    requestAnimationFrame(() => setTimeout(() => {
+    setTimeout(() => {
       const m = CheckersBot.getBestMove(game);
       setBotThinking(false);
       this.botBusy = false;
-      if (!m) return;
+      if (!m || this.game !== game) return;
 
       const wasCapture = m.captured.length > 0;
       const fromIdx = m.from, toIdx = m.to;
       game.makeMove(m.from, m.to);
       if (wasCapture) Sound.capture(); else Sound.move();
-      this.lastMove = {from: fromIdx, to: toIdx};
+      this.lastMove = { from: fromIdx, to: toIdx };
       this.render();
       this.checkGameOver();
       if (game.continuationPiece !== null && game.turn === 'black') {
         setTimeout(() => this.botMove(), 300);
       }
-    }, 30));
+    }, 50);
   }
 
   checkGameOver() {
