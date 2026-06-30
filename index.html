@@ -91,7 +91,7 @@
         </div>
     </div>
 
-    <!-- ========== PAGE 3: Hint Mode Select ========== -->
+    <!-- ========== PAGE 3: Hint Mode Select (2 Players only) ========== -->
     <div class="page" id="page-hint">
         <div class="topbar">
             <div class="topbar-left">
@@ -115,6 +115,54 @@
             <div class="hint-card" onclick="setHintMode(false)">
                 <div class="hint-card-title">โหมดจริงจัง</div>
                 <div class="hint-card-desc">ไม่มีคำใบ้ เล่นเหมือนกระดานจริง<br>แพ้คือแพ้เลย!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE 3C: Bot Difficulty Select (1 Player) ========== -->
+    <div class="page" id="page-bot-difficulty">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">♟ Chess <span>Arena</span></span>
+            </div>
+            <div class="topbar-actions">
+                <button class="btn btn-outline btn-sm" onclick="showPage('page-menu')">ย้อนกลับ</button>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+        <div class="page-hero">
+            <div class="page-hero-title">เลือกระดับความยากของ Bot</div>
+            <div class="page-hero-subtitle">
+                ยิ่งความยากสูง ยิ่งได้ Rating เยอะเมื่อชนะ</div>
+        </div>
+        <div class="hint-grid">
+            <div class="hint-card" onclick="startBotGame(100)">
+                <div class="hint-card-title">Rating 100</div>
+                <div class="hint-card-desc">ชนะได้ +2 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(300)">
+                <div class="hint-card-title">Rating 300</div>
+                <div class="hint-card-desc">ชนะได้ +4 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(500)">
+                <div class="hint-card-title">Rating 500</div>
+                <div class="hint-card-desc">ชนะได้ +5 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(900)">
+                <div class="hint-card-title">Rating 900</div>
+                <div class="hint-card-desc">ชนะได้ +7 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(1100)">
+                <div class="hint-card-title">Rating 1100</div>
+                <div class="hint-card-desc">ชนะได้ +15 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(1200)">
+                <div class="hint-card-title">Rating 1200</div>
+                <div class="hint-card-desc">ชนะได้ +17 Rating</div>
+            </div>
+            <div class="hint-card" onclick="startBotGame(1500)">
+                <div class="hint-card-title">Rating 1500</div>
+                <div class="hint-card-desc">ชนะได้ +20 Rating</div>
             </div>
         </div>
     </div>

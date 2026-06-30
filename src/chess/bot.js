@@ -27,7 +27,8 @@ export const Bot = {
         return score;
     },
 
-    minimax(game, depth, alpha, beta, maximizing) {
+    minimax(game, depth, alpha, beta, maximizing, deadline) {
+        if (deadline && Date.now() >= deadline) return null;
         if (depth === 0 || game.status === 'checkmate' || game.status === 'stalemate' || game.status === 'draw') {
             if (game.status === 'checkmate') return maximizing ? -99999 : 99999;
             if (game.status === 'stalemate' || game.status === 'draw') return 0;
@@ -40,8 +41,9 @@ export const Bot = {
             for (const m of moves) {
                 const s = this._saveState(game);
                 game.makeMove(m.from, m.to, 'Q');
-                const score = this.minimax(game, depth - 1, alpha, beta, false);
+                const score = this.minimax(game, depth - 1, alpha, beta, false, deadline);
                 this._restoreState(game, s);
+                if (score === null) return null;
                 best = Math.max(best, score); alpha = Math.max(alpha, score);
                 if (beta <= alpha) break;
             }
@@ -51,8 +53,9 @@ export const Bot = {
             for (const m of moves) {
                 const s = this._saveState(game);
                 game.makeMove(m.from, m.to, 'Q');
-                const score = this.minimax(game, depth - 1, alpha, beta, true);
+                const score = this.minimax(game, depth - 1, alpha, beta, true, deadline);
                 this._restoreState(game, s);
+                if (score === null) return null;
                 best = Math.min(best, score); beta = Math.min(beta, score);
                 if (beta <= alpha) break;
             }
@@ -74,21 +77,44 @@ export const Bot = {
 
     getDepth(r) { return r < 600 ? 2 : r < 1200 ? 3 : 4; },
     getRandomness(r) { return r < 300 ? 0.6 : r < 600 ? 0.4 : r < 900 ? 0.25 : r < 1200 ? 0.15 : 0.05; },
+    // เฉพาะระดับยากสุด (>=1200) จะจำกัดเวลาคิด เพื่อไม่ให้ depth 4 ใช้เวลานานเกินไป
+    getTimeLimitMs(r) { return r >= 1200 ? 2000 : null; },
+
+    // ค้นหาที่ความลึกหนึ่งให้ครบ แล้วคืนหมากที่ดีที่สุด หรือ null ถ้าหมดเวลาก่อนค้นจบ
+    _searchAtDepth(game, depth, deadline) {
+        const moves = game.allLegalMoves();
+        moves.sort((a, b) => (game.board[b.to] ? 1 : 0) - (game.board[a.to] ? 1 : 0));
+        let best = null, bestScore = Infinity;
+        for (const m of moves) {
+            const s = this._saveState(game);
+            game.makeMove(m.from, m.to, 'Q');
+            const score = this.minimax(game, depth - 1, -Infinity, Infinity, true, deadline);
+            this._restoreState(game, s);
+            if (score === null) return null;
+            if (score < bestScore) { bestScore = score; best = m; }
+        }
+        return best || moves[0];
+    },
 
     getBestMove(game, playerRating) {
         const moves = game.allLegalMoves();
         if (moves.length === 0) return null;
         if (Math.random() < this.getRandomness(playerRating))
             return moves[Math.floor(Math.random() * moves.length)];
-        const depth = this.getDepth(playerRating);
-        let best = null, bestScore = Infinity;
-        for (const m of moves) {
-            const s = this._saveState(game);
-            game.makeMove(m.from, m.to, 'Q');
-            const score = this.minimax(game, depth - 1, -Infinity, Infinity, true);
-            this._restoreState(game, s);
-            if (score < bestScore) { bestScore = score; best = m; }
+
+        const maxDepth = this.getDepth(playerRating);
+        const timeLimitMs = this.getTimeLimitMs(playerRating);
+        const deadline = timeLimitMs ? Date.now() + timeLimitMs : null;
+
+        // Iterative deepening: ค้นจากตื้นไปลึกทีละชั้น แต่ละชั้นต้องค้นจบ
+        // ถ้าจบไม่ทันเวลา (deadline) จะใช้ผลลัพธ์ของชั้นก่อนหน้าที่ค้นจบแล้วแทน
+        let bestMove = moves[0];
+        for (let depth = 1; depth <= maxDepth; depth++) {
+            const found = this._searchAtDepth(game, depth, deadline);
+            if (found === null) break;
+            bestMove = found;
+            if (deadline && Date.now() >= deadline) break;
         }
-        return best || moves[0];
+        return bestMove;
     }
 };

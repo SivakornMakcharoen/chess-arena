@@ -15,7 +15,21 @@ let APP = {
     player2: null,
     gameMode: null,
     hintMode: true,
-    pendingMode: null
+    pendingMode: null,
+    botDifficulty: 500
+};
+
+// ============================================================
+// BOT DIFFICULTY LEVELS (rating -> rating reward เมื่อชนะ)
+// ============================================================
+const BOT_LEVELS = {
+    100: 2,
+    300: 4,
+    500: 5,
+    900: 7,
+    1100: 15,
+    1200: 17,
+    1500: 20
 };
 
 // ============================================================
@@ -176,7 +190,7 @@ function doBotMove() {
     if (!chess || chess.turn !== 'b') return;
     document.getElementById('bot-think').classList.add('active');
     setTimeout(() => {
-        const m = Bot.getBestMove(chess, APP.player?.rating || 500);
+        const m = Bot.getBestMove(chess, APP.botDifficulty || 500);
         document.getElementById('bot-think').classList.remove('active');
         if (m) {
             const wasCapture = !!chess.board[m.to];
@@ -301,8 +315,8 @@ async function showGameOver(status) {
 
     let delta = 0;
     if (APP.gameMode === 'single' && APP.player && APP.gameMode !== 'whiteboard') {
-        // Single player vs AI: +5 for win, 0 for draw/loss
-        if (result === 'win') delta = 5;
+        // Single player vs AI: reward depends on bot difficulty rating chosen
+        if (result === 'win') delta = BOT_LEVELS[APP.botDifficulty] || 5;
         const ratingBefore = APP.player.rating;
         APP.player.rating = Math.max(0, APP.player.rating + delta);
         try {
@@ -483,8 +497,14 @@ function doLogout() {
 // ============================================================
 // GAME START FLOW
 // ============================================================
-function startSinglePlayer() { APP.pendingMode = 'single'; showPage('page-hint'); }
+function startSinglePlayer() { APP.pendingMode = 'single'; showPage('page-bot-difficulty'); }
 function startTwoPlayer() { APP.pendingMode = 'two'; showPage('page-hint'); }
+
+function startBotGame(rating) {
+    APP.botDifficulty = rating;
+    APP.hintMode = true;
+    startGame(APP.pendingMode);
+}
 
 function setHintMode(enabled) {
     APP.hintMode = enabled;
@@ -568,7 +588,7 @@ function startGame(mode) {
     if (btns) btns.innerHTML = `<button class="btn" onclick="playAgain()">เล่นอีกครั้ง</button><button class="btn btn-outline" onclick="showPage('page-menu')">เมนูหลัก</button>`;
 
     if (mode === 'single') {
-        botRating = Rating.getBotRating(p.rating);
+        botRating = APP.botDifficulty || 500;
         document.getElementById('white-name').textContent = Security.sanitize(p.nickname);
         document.getElementById('white-rating').textContent = `Rating: ${p.rating}`;
         document.getElementById('black-name').textContent = 'AI';
@@ -1208,5 +1228,5 @@ Object.assign(window, {
     doLogout, doResign, handleLogin, handleLoginP2, handleLogout,
     joinCustomRoom, offerDraw, openCheckers, playAgain, sendChatMessage,
     setHintMode, showCustomMenu, showJoinPanel, showPage, showRanking,
-    startCustomBuild, startSinglePlayer, startTwoPlayer, startWhiteBoard,
+    startBotGame, startCustomBuild, startSinglePlayer, startTwoPlayer, startWhiteBoard,
 });
