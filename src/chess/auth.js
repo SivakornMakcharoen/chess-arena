@@ -182,5 +182,43 @@ export const Auth = {
         this._save(session);
         history.replaceState(null, '', window.location.pathname + window.location.search);
         return session;
+    },
+
+    // ============================================================
+    // GOOGLE OAUTH (Supabase "Sign in with Google")
+    // ============================================================
+
+    /**
+     * พาไปหน้า Google เพื่อ login (redirect ทั้งหน้าเว็บ)
+     * Supabase จะพากลับมาที่ redirectTo พร้อม access_token แนบใน URL hash
+     * ต้องเปิด Google provider ใน Supabase Dashboard -> Authentication -> Providers ก่อน
+     */
+    signInWithGoogle() {
+        const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
+        window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
+    },
+
+    /**
+     * ตอน Supabase พากลับมาจาก Google สำเร็จ จะแนบ token ใน URL hash
+     * เช่น #access_token=...&refresh_token=...&expires_in=...&provider_token=...
+     * (ไม่มี type=recovery แบบเคส reset password) ฟังก์ชันนี้ตรวจ/ดึง token นั้น
+     * มาตั้งเป็น session, ดึงข้อมูล user เต็มจาก Supabase แล้วเคลียร์ hash ออกจาก URL bar
+     */
+    async consumeOAuthHashIfPresent() {
+        if (!window.location.hash) return null;
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        if (params.get('type') === 'recovery') return null; // เคส reset password แยกไปจัดการที่ consumeRecoveryHashIfPresent
+        const access_token = params.get('access_token');
+        if (!access_token) return null;
+        const session = {
+            access_token,
+            refresh_token: params.get('refresh_token') || null,
+            expires_at: Date.now() + parseInt(params.get('expires_in') || '3600', 10) * 1000,
+            user: null
+        };
+        this._save(session);
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        await this.fetchUser(); // เติม user object (id, email, user_metadata เช่นชื่อ/รูปจาก Google)
+        return this._session;
     }
 };
