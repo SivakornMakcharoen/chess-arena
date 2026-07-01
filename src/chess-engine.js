@@ -1379,10 +1379,10 @@ function copyRoomCode() {
 // by checking APP.gameMode === 'custom' inside existing functions
 
 // ============================================================
-// CHECKERS — open checkers.html in new tab
+// CHECKERS — open checkers.html in this tab
 // ============================================================
 function openCheckers() {
-    window.open('checkers.html', '_blank');
+    window.location.href = 'checkers.html';
 }
 
 // ============================================================
