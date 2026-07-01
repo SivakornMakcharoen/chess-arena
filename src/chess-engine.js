@@ -480,6 +480,36 @@ async function handleLogin() {
     }
 }
 
+function handleGoogleLogin() {
+    if (!Security.rateLimit('login', 20)) { showLoginError('ลองใหม่ใน 1 นาที'); return; }
+    Auth.signInWithGoogle(); // redirect ไปหน้า Google ทั้งหน้าเว็บ ไม่มีอะไรทำต่อในฟังก์ชันนี้
+}
+
+/** หลัง Google redirect กลับมา: หา/สร้างโปรไฟล์ผู้เล่นให้ user นี้ แล้วเข้าเมนู */
+async function finishOAuthLogin(session) {
+    const user = session.user;
+    if (!user) { showPage('page-login'); showLoginError('เข้าสู่ระบบด้วย Google ไม่สำเร็จ ลองใหม่อีกครั้ง'); return; }
+    try {
+        let player = await DB.getPlayerByUserId(user.id);
+        if (!player) {
+            // ผู้ใช้ Google ใหม่ ยังไม่มีโปรไฟล์ผู้เล่น -> สร้างให้อัตโนมัติ
+            // ใช้ชื่อจาก Google (full_name / name) หรือ fallback เป็นส่วนหน้า email
+            const googleName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+            const fallbackNick = (user.email || 'player').split('@')[0];
+            const nick = Security.sanitize(googleName || fallbackNick).slice(0, 24) || 'player';
+            const rows = await DB.upsertPlayerForUser(user.id, user.email, nick);
+            player = rows?.[0];
+            if (!player) throw new Error('ไม่สามารถสร้างโปรไฟล์ผู้เล่นได้');
+        }
+        APP.player = player;
+        updateMenuUI();
+        showPage('page-menu');
+    } catch (e) {
+        showPage('page-login');
+        showLoginError('เข้าสู่ระบบด้วย Google ไม่สำเร็จ: ' + e.message);
+    }
+}
+
 // ============================================================
 // FORGOT / RESET PASSWORD
 // ============================================================
@@ -566,6 +596,11 @@ async function confirmNewPassword() {
     if (recoverySession) {
         showPage('page-login');
         openModal('reset-password-modal');
+        return;
+    }
+    const oauthSession = await Auth.consumeOAuthHashIfPresent();
+    if (oauthSession) {
+        await finishOAuthLogin(oauthSession);
         return;
     }
     try {
@@ -1359,7 +1394,7 @@ function openCheckers() {
 // ============================================================
 Object.assign(window, {
     acceptDraw, closeModal, confirmNewPassword, confirmResign, copyRoomCode, declineDraw,
-    doLogout, doResign, handleLogin, handleLoginP2, handleLogout,
+    doLogout, doResign, handleLogin, handleGoogleLogin, handleLoginP2, handleLogout,
     joinCustomRoom, offerDraw, openCheckers, playAgain, sendChatMessage, sendPasswordReset,
     setHintMode, showCustomMenu, showForgotPassword, showJoinPanel, showPage, showRanking,
     startBotGame, startCustomBuild, startSinglePlayer, startTwoPlayer, startWhiteBoard,
