@@ -5,6 +5,52 @@ const YOUTUBE_MUSIC_CLOSED_KEY = 'chess-arena-youtube-music-closed';
 const DEFAULT_YOUTUBE_MUSIC = 'https://www.youtube.com/watch?v=jfKfPfyJRdk';
 let activeYouTubeMusicUrl = DEFAULT_YOUTUBE_MUSIC;
 
+
+function ensureMusicPlayerMarkup() {
+    if (document.getElementById('music-panel')) return;
+
+    const opener = document.createElement('button');
+    opener.className = 'music-open-btn music-pending';
+    opener.id = 'music-open-btn';
+    opener.type = 'button';
+    opener.setAttribute('aria-label', 'Open background music');
+    opener.textContent = 'Music';
+    opener.addEventListener('click', showMusicPlayer);
+
+    const panel = document.createElement('div');
+    panel.className = 'music-panel music-pending';
+    panel.id = 'music-panel';
+    panel.setAttribute('aria-label', 'Background music');
+    panel.innerHTML = `
+        <div class="music-panel-head" id="music-drag-handle">
+            <div>
+                <div class="music-title">Background Music</div>
+                <div class="music-subtitle">Drag to move, resize from the corner</div>
+            </div>
+            <div class="music-actions">
+                <a class="music-link" id="music-youtube-link" href="https://www.youtube.com/watch?v=jfKfPfyJRdk" target="_blank" rel="noopener">YouTube</a>
+                <button class="music-icon-btn" id="music-close-btn" type="button" aria-label="Close background music">x</button>
+            </div>
+        </div>
+        <div class="music-controls">
+            <input type="url" id="youtube-url-input" placeholder="Paste YouTube music link" autocomplete="off">
+            <button class="btn btn-sm" id="youtube-open-btn" type="button">Open</button>
+        </div>
+        <div class="music-player">
+            <iframe
+                id="youtube-music-frame"
+                src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?rel=0"
+                title="Background music"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen>
+            </iframe>
+        </div>
+    `;
+
+    document.body.append(opener, panel);
+    document.getElementById('music-close-btn')?.addEventListener('click', hideMusicPlayer);
+    document.getElementById('youtube-open-btn')?.addEventListener('click', loadYouTubeMusic);
+}
 function getYouTubeVideoId(rawUrl) {
     const value = (rawUrl || '').trim();
     if (!value) return null;
@@ -119,6 +165,11 @@ function setYouTubeMusic(rawUrl, shouldSave = true) {
     return true;
 }
 
+
+function stopEmbeddedMusic() {
+    const frame = document.getElementById('youtube-music-frame');
+    if (frame) frame.src = '';
+}
 function loadYouTubeMusic() {
     const input = document.getElementById('youtube-url-input');
     showMusicPlayer();
@@ -128,7 +179,6 @@ function loadYouTubeMusic() {
 function hideMusicPlayer() {
     const panel = document.getElementById('music-panel');
     const opener = document.getElementById('music-open-btn');
-    const frame = document.getElementById('youtube-music-frame');
 
     saveMusicPanelPosition();
     saveMusicPanelSize();
@@ -136,7 +186,7 @@ function hideMusicPlayer() {
     opener?.classList.remove('music-pending');
     panel?.classList.add('is-hidden');
     opener?.classList.add('is-visible');
-    if (frame) frame.src = '';
+    stopEmbeddedMusic();
     setStoredValue(YOUTUBE_MUSIC_CLOSED_KEY, '1');
 }
 
@@ -197,6 +247,7 @@ function initMusicDrag() {
 }
 
 function initYouTubeMusic() {
+    ensureMusicPlayerMarkup();
     const panel = document.getElementById('music-panel');
     const input = document.getElementById('youtube-url-input');
     if (!panel || !input) return;
@@ -230,5 +281,12 @@ function initYouTubeMusic() {
     }
 }
 
+window.addEventListener('pagehide', stopEmbeddedMusic);
+
 Object.assign(window, { hideMusicPlayer, loadYouTubeMusic, showMusicPlayer });
-initYouTubeMusic();
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initYouTubeMusic, { once: true });
+} else {
+    initYouTubeMusic();
+}

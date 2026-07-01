@@ -20,9 +20,5 @@ export function sanitize(s) {
 }
 
 export function goBackToChess() {
-  if (window.opener) {
-    window.close();
-    return;
-  }
-  window.history.back();
+  window.location.href = 'index.html';
 }

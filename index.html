@@ -469,35 +469,6 @@
             </div>
         </div>
     </div>
-
-
-    
-    <button class="music-open-btn music-pending" id="music-open-btn" onclick="showMusicPlayer()" aria-label="Open background music">Music</button>
-    <div class="music-panel music-pending" id="music-panel" aria-label="Background music">
-        <div class="music-panel-head" id="music-drag-handle">
-            <div>
-                <div class="music-title">Background Music</div>
-                <div class="music-subtitle">Drag to move, resize from the corner</div>
-            </div>
-            <div class="music-actions">
-                <a class="music-link" id="music-youtube-link" href="https://www.youtube.com/watch?v=jfKfPfyJRdk" target="_blank" rel="noopener">YouTube</a>
-                <button class="music-icon-btn" onclick="hideMusicPlayer()" aria-label="Close background music">×</button>
-            </div>
-        </div>
-        <div class="music-controls">
-            <input type="url" id="youtube-url-input" placeholder="Paste YouTube music link" autocomplete="off">
-            <button class="btn btn-sm" onclick="loadYouTubeMusic()">Open</button>
-        </div>
-        <div class="music-player">
-            <iframe
-                id="youtube-music-frame"
-                src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?rel=0"
-                title="Background music"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen>
-            </iframe>
-        </div>
-    </div>
 </body>
 
 </html>
