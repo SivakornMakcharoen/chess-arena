@@ -111,6 +111,13 @@
     padding-inline: 18px;
 }
 
+
+.music-status {
+    min-height: 16px;
+    margin: -6px 2px 8px;
+    color: var(--danger, #ef4444);
+    font-size: 12px;
+}
 .music-player {
     position: relative;
     width: 100%;

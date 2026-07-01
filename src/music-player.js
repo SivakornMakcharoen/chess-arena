@@ -2,7 +2,8 @@ const YOUTUBE_MUSIC_KEY = 'chess-arena-youtube-music-url';
 const YOUTUBE_MUSIC_POS_KEY = 'chess-arena-youtube-music-position';
 const YOUTUBE_MUSIC_SIZE_KEY = 'chess-arena-youtube-music-size';
 const YOUTUBE_MUSIC_CLOSED_KEY = 'chess-arena-youtube-music-closed';
-const DEFAULT_YOUTUBE_MUSIC = 'https://www.youtube.com/watch?v=jfKfPfyJRdk';
+const DEFAULT_YOUTUBE_MUSIC = '';
+const UNAVAILABLE_DEFAULT_VIDEO_ID = 'jfKfPfyJRdk';
 let activeYouTubeMusicUrl = DEFAULT_YOUTUBE_MUSIC;
 
 
@@ -28,7 +29,7 @@ function ensureMusicPlayerMarkup() {
                 <div class="music-subtitle">Drag to move, resize from the corner</div>
             </div>
             <div class="music-actions">
-                <a class="music-link" id="music-youtube-link" href="https://www.youtube.com/watch?v=jfKfPfyJRdk" target="_blank" rel="noopener">YouTube</a>
+                <a class="music-link" id="music-youtube-link" href="https://www.youtube.com" target="_blank" rel="noopener">YouTube</a>
                 <button class="music-icon-btn" id="music-close-btn" type="button" aria-label="Close background music">x</button>
             </div>
         </div>
@@ -36,10 +37,11 @@ function ensureMusicPlayerMarkup() {
             <input type="url" id="youtube-url-input" placeholder="Paste YouTube music link" autocomplete="off">
             <button class="btn btn-sm" id="youtube-open-btn" type="button">Open</button>
         </div>
+        <div class="music-status" id="music-status" aria-live="polite"></div>
         <div class="music-player">
             <iframe
                 id="youtube-music-frame"
-                src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?rel=0"
+                src=""
                 title="Background music"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowfullscreen>
@@ -83,6 +85,15 @@ function setStoredValue(key, value) {
     try { localStorage.setItem(key, value); } catch { /* storage unavailable */ }
 }
 
+
+function getSavedMusicUrl() {
+    const savedUrl = getStoredValue(YOUTUBE_MUSIC_KEY) || '';
+    if (getYouTubeVideoId(savedUrl) === UNAVAILABLE_DEFAULT_VIDEO_ID) {
+        try { localStorage.removeItem(YOUTUBE_MUSIC_KEY); } catch { /* storage unavailable */ }
+        return '';
+    }
+    return savedUrl;
+}
 function clampMusicPanel() {
     const panel = document.getElementById('music-panel');
     if (!panel || panel.classList.contains('is-hidden')) return;
@@ -149,17 +160,20 @@ function setYouTubeMusic(rawUrl, shouldSave = true) {
     const input = document.getElementById('youtube-url-input');
     const frame = document.getElementById('youtube-music-frame');
     const link = document.getElementById('music-youtube-link');
+    const status = document.getElementById('music-status');
 
     if (!videoId || !frame || !link) {
+        if (status) status.textContent = rawUrl ? 'Invalid YouTube link' : 'Paste a YouTube link first';
         if (input) input.focus();
         return false;
     }
 
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
     activeYouTubeMusicUrl = watchUrl;
-    frame.src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`;
+    frame.src = `https://www.youtube.com/embed/${videoId}?rel=0`;
     link.href = watchUrl;
     if (input) input.value = watchUrl;
+    if (status) status.textContent = '';
 
     if (shouldSave) setStoredValue(YOUTUBE_MUSIC_KEY, watchUrl);
     return true;
@@ -172,8 +186,15 @@ function stopEmbeddedMusic() {
 }
 function loadYouTubeMusic() {
     const input = document.getElementById('youtube-url-input');
-    showMusicPlayer();
-    setYouTubeMusic(input?.value || DEFAULT_YOUTUBE_MUSIC);
+    const requestedUrl = input?.value?.trim() || DEFAULT_YOUTUBE_MUSIC;
+    const panel = document.getElementById('music-panel');
+    const opener = document.getElementById('music-open-btn');
+
+    panel?.classList.remove('music-pending', 'is-hidden');
+    opener?.classList.remove('music-pending', 'is-visible');
+    setStoredValue(YOUTUBE_MUSIC_CLOSED_KEY, '0');
+    setYouTubeMusic(requestedUrl);
+    requestAnimationFrame(clampMusicPanel);
 }
 
 function hideMusicPlayer() {
@@ -197,7 +218,13 @@ function showMusicPlayer() {
     panel?.classList.remove('music-pending', 'is-hidden');
     opener?.classList.remove('music-pending', 'is-visible');
     setStoredValue(YOUTUBE_MUSIC_CLOSED_KEY, '0');
-    setYouTubeMusic(activeYouTubeMusicUrl || getStoredValue(YOUTUBE_MUSIC_KEY) || DEFAULT_YOUTUBE_MUSIC, false);
+    const musicUrl = activeYouTubeMusicUrl || getSavedMusicUrl() || DEFAULT_YOUTUBE_MUSIC;
+    if (musicUrl) {
+        setYouTubeMusic(musicUrl, false);
+    } else {
+        const status = document.getElementById('music-status');
+        if (status) status.textContent = 'Paste a YouTube link and press Open';
+    }
     requestAnimationFrame(clampMusicPanel);
 }
 
@@ -252,8 +279,13 @@ function initYouTubeMusic() {
     const input = document.getElementById('youtube-url-input');
     if (!panel || !input) return;
 
-    activeYouTubeMusicUrl = getStoredValue(YOUTUBE_MUSIC_KEY) || DEFAULT_YOUTUBE_MUSIC;
-    setYouTubeMusic(activeYouTubeMusicUrl, false);
+    activeYouTubeMusicUrl = getSavedMusicUrl() || DEFAULT_YOUTUBE_MUSIC;
+    if (activeYouTubeMusicUrl) {
+        setYouTubeMusic(activeYouTubeMusicUrl, false);
+    } else {
+        const status = document.getElementById('music-status');
+        if (status) status.textContent = 'Paste a YouTube link and press Open';
+    }
     restoreMusicPanelLayout();
     initMusicDrag();
 
