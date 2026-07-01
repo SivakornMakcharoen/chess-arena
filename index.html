@@ -11,29 +11,46 @@
 
 <body>
 
+    <!-- ========== PAGE 0: Checking session (ป้องกันการกระพริบไปหน้า login ก่อนรู้ผล) ========== -->
+    <div class="page active" id="page-loading">
+        <div class="card" style="text-align:center;">
+            <div class="spinner"></div>
+            <div class="loading-text">กำลังตรวจสอบสถานะเข้าสู่ระบบ...</div>
+        </div>
+    </div>
+
     <!-- ========== PAGE 1: Login ========== -->
-    <div class="page active" id="page-login">
+    <div class="page" id="page-login">
         <div class="card">
             <div class="logo">
                 <span class="logo-icon">♟</span>
                 <div class="logo-title">Chess <span>Arena</span></div>
-                <div class="logo-sub">เข้าสู่ระบบ</div>
+                <div class="logo-sub">Login/Register</div>
             </div>
             <div class="field">
-                <label for="inp-email">อีเมล</label>
-                <input type="email" id="inp-email" placeholder="your@email.com" autocomplete="email" maxlength="120">
+                <label for="inp-email">Email</label>
+                <input type="email" id="inp-email"  autocomplete="email" maxlength="120">
                 <div class="error-msg" id="err-email">รูปแบบอีเมลไม่ถูกต้อง</div>
             </div>
             <div class="field">
-                <label for="inp-nick">ชื่อเล่น</label>
-                <input type="text" id="inp-nick" placeholder="เช่น GrandMaster99" autocomplete="nickname" maxlength="24"
+                <label for="inp-nick">player name</label>
+                <input type="text" id="inp-nick"  autocomplete="nickname" maxlength="24"
                     minlength="2">
                 <div class="error-msg" id="err-nick">ชื่อเล่น 2-24 ตัวอักษร</div>
             </div>
+            <div class="field">
+                <label for="inp-password">password</label>
+                <input type="password" id="inp-password"  autocomplete="current-password"
+                    minlength="6">
+                <div class="error-msg" id="err-password">รหัสผ่านอย่างน้อย 6 ตัวอักษร</div>
+            </div>
+            <!-- <p class="form-note" style="text-align:right;margin-top:-8px;">
+                <a href="javascript:void(0)" onclick="showForgotPassword()" style="color:var(--primary);text-decoration:underline;"><center>ลืมรหัสผ่าน</center></center><br></a>
+            </p> -->
             <div id="login-error" class="error-msg error-msg-block"></div>
-            <button class="btn" id="btn-login" onclick="handleLogin()">เริ่มเล่น</button>
+            <button class="btn" id="btn-login" onclick="handleLogin()">เข้าสู่ระบบ / สมัครสมาชิก</button>
             <p class="form-note">
-                ข้อมูลถูกจัดเก็บอย่างปลอดภัย</p>
+                หากเข้ามาใช้งานครั้งแรก การกรอกครั้งนี้คือการสมัครและโปรดกดยืนยันemail</p>
         </div>
     </div>
 
@@ -186,12 +203,12 @@
                     <div class="logo-sub">เข้าสู่ระบบ (ฝั่งดำ)</div>
                 </div>
                 <div class="field">
-                    <label for="inp-email-p2">อีเมล</label>
+                    <label for="inp-email-p2">Email</label>
                     <input type="email" id="inp-email-p2" placeholder="your@email.com" autocomplete="off" maxlength="120">
                     <div class="error-msg" id="err-email-p2">รูปแบบอีเมลไม่ถูกต้อง</div>
                 </div>
                 <div class="field">
-                    <label for="inp-nick-p2">ชื่อเล่น</label>
+                    <label for="inp-nick-p2">Name</label>
                     <input type="text" id="inp-nick-p2" placeholder="เช่น ChessKing42" autocomplete="off" maxlength="24" minlength="2">
                     <div class="error-msg" id="err-nick-p2">ชื่อเล่น 2-24 ตัวอักษร (a-z, 0-9, _, -)</div>
                 </div>
@@ -405,10 +422,45 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div class="modal-overlay" id="forgot-password-modal">
+        <div class="modal">
+            <h3>ลืมรหัสผ่าน</h3>
+            <p>กรอกอีเมลที่ใช้สมัคร</p>
+            <div class="field">
+                <input type="email" id="forgot-email"  autocomplete="email">
+            </div>
+            <div id="forgot-status" class="form-note" style="display:none;"></div>
+            <div class="modal-btns modal-btns-spaced">
+                <button class="btn" id="btn-forgot-send" onclick="sendPasswordReset()">SEND</button>
+                <button class="btn btn-outline" onclick="closeModal('forgot-password-modal')">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set New Password Modal (เปิดอัตโนมัติเมื่อผู้ใช้กดลิงก์รีเซ็ตรหัสผ่านจากอีเมล) -->
+    <div class="modal-overlay" id="reset-password-modal">
+        <div class="modal">
+            <h3>ตั้งรหัสผ่านใหม่</h3>
+            <p>กรอกรหัสผ่านใหม่ที่ต้องการใช้เข้าสู่ระบบ</p>
+            <div class="field">
+                <label for="reset-password-new">รหัสผ่านใหม่</label>
+                <input type="password" id="reset-password-new" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password">
+            </div>
+            <div class="field">
+                <label for="reset-password-confirm">ยืนยันรหัสผ่านใหม่</label>
+                <input type="password" id="reset-password-confirm" placeholder="พิมพ์อีกครั้ง" autocomplete="new-password">
+            </div>
+            <div id="reset-status" class="error-msg error-msg-block" style="display:none;"></div>
+            <div class="modal-btns modal-btns-spaced">
+                <button class="btn" id="btn-reset-confirm" onclick="confirmNewPassword()">บันทึกรหัสผ่านใหม่</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Logout Confirm Modal -->
     <div class="modal-overlay" id="logout-modal">
         <div class="modal">
-            <div class="modal-icon modal-icon-text">See You Later</div>
             <h3>ออกจากระบบ?</h3>
             <p id="logout-modal-sub">คุณต้องการออกจากระบบหรือไม่?</p>
             <div class="modal-btns modal-btns-spaced">

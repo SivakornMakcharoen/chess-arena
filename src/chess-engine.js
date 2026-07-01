@@ -1,4 +1,5 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './chess/config.js';
+import { Auth } from './chess/auth.js';
 import { Bot } from './chess/bot.js';
 import { ChessGame } from './chess/chess-game.js';
 import { DB } from './chess/db.js';
@@ -399,6 +400,13 @@ function playAgain() {
 // ============================================================
 // PAGE NAVIGATION
 // ============================================================
+// หน้าที่ปลอดภัยจะ "จำ" ไว้แล้วพากลับไปหลัง refresh (ไม่รวมหน้ากลางเกม
+// อย่าง page-board เพราะสถานะกระดาน/เวลาในเกมยังไม่ถูกบันทึกไว้ที่ไหน —
+// การพากลับเข้ากลางเกมที่ refresh ไปแล้วต้องมีระบบ save game state เพิ่ม
+// ซึ่งเป็นงานคนละสโคปกัน จึงพากลับไปแค่ระดับเมนูที่ปลอดภัยเท่านั้น)
+const RESTORABLE_PAGES = new Set(['page-menu', 'page-ranking', 'page-custom', 'page-hint', 'page-bot-difficulty']);
+const LAST_PAGE_KEY = 'chess-arena-last-page';
+
 function showPage(id) {
     if (id !== 'page-board' && APP.gameMode === 'custom' && typeof CustomMode !== 'undefined') {
         CustomMode.cleanup();
@@ -411,6 +419,9 @@ function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     window.scrollTo(0, 0);
+    if (RESTORABLE_PAGES.has(id)) {
+        try { sessionStorage.setItem(LAST_PAGE_KEY, id); } catch { /* private mode ฯลฯ ไม่เป็นไร */ }
+    }
 }
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -422,41 +433,161 @@ async function handleLogin() {
     if (!Security.rateLimit('login', 20)) { showLoginError('ลองใหม่ใน 1 นาที'); return; }
     const email = document.getElementById('inp-email').value.trim();
     const nick = document.getElementById('inp-nick').value.trim();
+    const password = document.getElementById('inp-password').value;
     const emailErr = document.getElementById('err-email');
     const nickErr = document.getElementById('err-nick');
-    emailErr.style.display = 'none'; nickErr.style.display = 'none';
+    const passErr = document.getElementById('err-password');
+    emailErr.style.display = 'none'; nickErr.style.display = 'none'; passErr.style.display = 'none';
     document.getElementById('login-error').style.display = 'none';
     let valid = true;
     if (!Security.isEmail(email)) { emailErr.style.display = 'block'; valid = false; }
     if (!Security.isNick(nick)) { nickErr.style.display = 'block'; valid = false; }
+    if (!password || password.length < 6) { passErr.style.display = 'block'; valid = false; }
     if (!valid) return;
 
     const btn = document.getElementById('btn-login');
     btn.disabled = true; btn.textContent = 'กำลังโหลด...';
     try {
-        let player = await DB.getPlayer(email);
+        let authData;
+        try {
+            // ลอง login ก่อน (กรณีเป็นบัญชีเดิม)
+            authData = await Auth.signIn(email, password);
+        } catch (signInErr) {
+            // ไม่ใช่บัญชีเดิม (หรือยังไม่เคยสมัคร) → สมัครสมาชิกใหม่ให้อัตโนมัติ
+            authData = await Auth.signUp(email, password);
+            if (!authData.access_token) {
+                showLoginError('สมัครสำเร็จ แต่ต้องกดยืนยันอีเมลก่อนเข้าสู่ระบบ (เช็คกล่องจดหมาย)');
+                return;
+            }
+        }
+        const user = Auth.getUser();
+        let player = await DB.getPlayerByUserId(user.id);
         if (!player) {
-            const rows = await DB.upsertPlayer(email, Security.sanitize(nick));
+            const rows = await DB.upsertPlayerForUser(user.id, email, Security.sanitize(nick));
             player = rows?.[0];
-            if (!player) throw new Error('ไม่สามารถสร้างบัญชีได้');
+            if (!player) throw new Error('ไม่สามารถสร้างโปรไฟล์ผู้เล่นได้');
         }
         APP.player = player;
         updateMenuUI();
         showPage('page-menu');
     } catch (e) {
-        console.warn('DB unavailable, using local mode:', e);
-        APP.player = {
-            id: 'local-' + Date.now(),
-            email: Security.sanitize(email).toLowerCase(),
-            nickname: Security.sanitize(nick),
-            rating: 0, wins: 0, losses: 0, draws: 0
-        };
-        updateMenuUI();
-        showPage('page-menu');
+        const msg = e.message || '';
+        if (msg.includes('already registered')) showLoginError('อีเมลนี้มีบัญชีอยู่แล้ว แต่รหัสผ่านไม่ถูกต้อง');
+        else if (msg.includes('Invalid login')) showLoginError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        else showLoginError('เข้าสู่ระบบไม่สำเร็จ: ' + msg);
     } finally {
-        btn.disabled = false; btn.textContent = 'เริ่มเล่น →';
+        btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ / สมัครสมาชิก';
     }
 }
+
+// ============================================================
+// FORGOT / RESET PASSWORD
+// ============================================================
+function showForgotPassword() {
+    document.getElementById('forgot-email').value = document.getElementById('inp-email').value || '';
+    const statusEl = document.getElementById('forgot-status');
+    statusEl.style.display = 'none';
+    openModal('forgot-password-modal');
+}
+
+async function sendPasswordReset() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const statusEl = document.getElementById('forgot-status');
+    if (!Security.isEmail(email)) {
+        statusEl.className = 'error-msg error-msg-block';
+        statusEl.textContent = 'กรุณากรอกอีเมลให้ถูกต้อง';
+        statusEl.style.display = 'block';
+        return;
+    }
+    const btn = document.getElementById('btn-forgot-send');
+    btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+    try {
+        await Auth.requestPasswordReset(email);
+        statusEl.className = 'form-note';
+        statusEl.textContent = 'ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว กรุณาตรวจสอบกล่องจดหมาย (รวมถึงโฟลเดอร์ Spam)';
+        statusEl.style.display = 'block';
+    } catch (e) {
+        statusEl.className = 'error-msg error-msg-block';
+        statusEl.textContent = 'ส่งไม่สำเร็จ: ' + e.message;
+        statusEl.style.display = 'block';
+    } finally {
+        btn.disabled = false; btn.textContent = 'ส่งลิงก์รีเซ็ตรหัสผ่าน';
+    }
+}
+
+async function confirmNewPassword() {
+    const pass = document.getElementById('reset-password-new').value;
+    const pass2 = document.getElementById('reset-password-confirm').value;
+    const statusEl = document.getElementById('reset-status');
+    statusEl.style.display = 'none';
+    if (!pass || pass.length < 6) {
+        statusEl.textContent = 'รหัสผ่านอย่างน้อย 6 ตัวอักษร';
+        statusEl.style.display = 'block';
+        return;
+    }
+    if (pass !== pass2) {
+        statusEl.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน';
+        statusEl.style.display = 'block';
+        return;
+    }
+    const btn = document.getElementById('btn-reset-confirm');
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    try {
+        await Auth.updatePassword(pass);
+        const user = await Auth.fetchUser();
+        const player = user ? await DB.getPlayerByUserId(user.id) : null;
+        closeModal('reset-password-modal');
+        if (player) {
+            APP.player = player;
+            updateMenuUI();
+            showPage('page-menu');
+        } else {
+            showLoginError('ตั้งรหัสผ่านใหม่สำเร็จ กรุณากรอกชื่อเล่นแล้วเข้าสู่ระบบอีกครั้ง');
+            showPage('page-login');
+        }
+    } catch (e) {
+        statusEl.textContent = 'ตั้งรหัสผ่านไม่สำเร็จ: ' + e.message;
+        statusEl.style.display = 'block';
+    } finally {
+        btn.disabled = false; btn.textContent = 'บันทึกรหัสผ่านใหม่';
+    }
+}
+
+// ============================================================
+// APP INIT
+// เช็ค 2 เคสตอนโหลดหน้าเว็บทุกครั้ง:
+// 1) ผู้ใช้เพิ่งกดลิงก์ "รีเซ็ตรหัสผ่าน" จากอีเมล (มี token แนบใน URL hash)
+// 2) มี session login ค้างอยู่จากรอบก่อน (เก็บใน localStorage โดย Auth module)
+// ระหว่างเช็คจะค้างอยู่หน้า page-loading (ไม่ใช่ page-login) เพื่อไม่ให้
+// กระพริบไปหน้า login ก่อนสลับมาหน้า menu แบบที่เคยเป็นปัญหา
+// ============================================================
+(async function initAuthFlow() {
+    const recoverySession = Auth.consumeRecoveryHashIfPresent();
+    if (recoverySession) {
+        showPage('page-login');
+        openModal('reset-password-modal');
+        return;
+    }
+    try {
+        const session = await Auth.getValidSession();
+        if (session?.user) {
+            const player = await DB.getPlayerByUserId(session.user.id);
+            if (player) {
+                APP.player = player;
+                updateMenuUI();
+                let lastPage = null;
+                try { lastPage = sessionStorage.getItem(LAST_PAGE_KEY); } catch { /* noop */ }
+                if (lastPage === 'page-ranking') showRanking();
+                else if (lastPage && RESTORABLE_PAGES.has(lastPage)) showPage(lastPage);
+                else showPage('page-menu');
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Session restore failed:', e);
+    }
+    showPage('page-login');
+})();
 
 function showLoginError(msg) {
     const el = document.getElementById('login-error');
@@ -488,9 +619,11 @@ function doLogout() {
     if (APP.gameMode === 'custom' && typeof CustomMode !== 'undefined') {
         CustomMode.cleanup();
     }
+    Auth.signOut().catch(() => { }); // revoke token จริงฝั่ง Supabase + ลบ session ใน localStorage
     APP.player = null; APP.player2 = null; APP.gameMode = null; chess = null;
     document.getElementById('inp-email').value = '';
     document.getElementById('inp-nick').value = '';
+    document.getElementById('inp-password').value = '';
     showPage('page-login');
 }
 
@@ -787,6 +920,7 @@ document.addEventListener('keydown', e => {
 });
 document.getElementById('inp-nick').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
 document.getElementById('inp-email').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+document.getElementById('inp-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
 document.getElementById('inp-nick-p2').addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
 document.getElementById('inp-email-p2').addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
 
@@ -1224,9 +1358,9 @@ function openCheckers() {
 // attach them to window explicitly to keep all existing markup working.
 // ============================================================
 Object.assign(window, {
-    acceptDraw, closeModal, confirmResign, copyRoomCode, declineDraw,
+    acceptDraw, closeModal, confirmNewPassword, confirmResign, copyRoomCode, declineDraw,
     doLogout, doResign, handleLogin, handleLoginP2, handleLogout,
-    joinCustomRoom, offerDraw, openCheckers, playAgain, sendChatMessage,
-    setHintMode, showCustomMenu, showJoinPanel, showPage, showRanking,
+    joinCustomRoom, offerDraw, openCheckers, playAgain, sendChatMessage, sendPasswordReset,
+    setHintMode, showCustomMenu, showForgotPassword, showJoinPanel, showPage, showRanking,
     startBotGame, startCustomBuild, startSinglePlayer, startTwoPlayer, startWhiteBoard,
 });
