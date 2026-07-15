@@ -1,6 +1,7 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './chess/config.js';
 import { Auth } from './chess/auth.js';
 import { Bot } from './chess/bot.js';
+import { BOT_PERSONAS, getPersonaById } from './chess/bot-personas.js';
 import { ChessGame } from './chess/chess-game.js';
 import { DB } from './chess/db.js';
 import { PIECE_IMAGES } from './chess/pieces.js';
@@ -17,21 +18,61 @@ let APP = {
     gameMode: null,
     hintMode: true,
     pendingMode: null,
-    botDifficulty: 500
+    botDifficulty: 500,
+    botPersona: null
 };
 
 // ============================================================
-// BOT DIFFICULTY LEVELS (rating -> rating reward เมื่อชนะ)
+// BOT PERSONA SELECTION PAGE
 // ============================================================
-const BOT_LEVELS = {
-    100: 2,
-    300: 4,
-    500: 5,
-    900: 7,
-    1100: 15,
-    1200: 17,
-    1500: 20
-};
+function renderBotPersonaCards() {
+    const grid = document.getElementById('bot-persona-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    BOT_PERSONAS.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'hint-card persona-card';
+        card.onclick = () => startBotGame(p.id);
+        card.innerHTML = `
+            <div class="persona-avatar">${p.avatar}</div>
+            <div class="persona-name">${p.name}</div>
+            <div class="persona-rating">Rating ${p.rating}</div>
+            <div class="persona-style-badge">${p.styleLabel}</div>
+            <div class="persona-tagline">${p.tagline}</div>
+            <div class="persona-reward">ชนะได้ +${p.reward} Rating</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+renderBotPersonaCards();
+
+// ============================================================
+// BOT CHAT (ข้อความจากบอทระหว่างเล่น เฉพาะโหมด Single Player)
+// ============================================================
+function appendBotChatMsg(persona, text) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'chat-msg them';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'chat-msg-name';
+    nameEl.textContent = `${persona.avatar} ${persona.name}`;
+    div.appendChild(nameEl);
+    const textEl = document.createElement('div');
+    textEl.textContent = text;
+    div.appendChild(textEl);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// สุ่มคำพูดตาม key เหตุการณ์ (greeting, selfCapture, gotCaptured, givingCheck, takingCheck, onWin, onLose, onDraw)
+function botSay(key) {
+    if (APP.gameMode !== 'single' || !APP.botPersona) return;
+    const lines = APP.botPersona.chat?.[key];
+    if (!lines || !lines.length) return;
+    const text = lines[Math.floor(Math.random() * lines.length)];
+    appendBotChatMsg(APP.botPersona, text);
+}
 
 // ============================================================
 // GAME UI
@@ -181,6 +222,12 @@ function executeMove(from, to, promoChoice = null) {
     // เสียง check หลัง render
     if (chess.status === 'check') setTimeout(() => Sound.check(), 150);
 
+    // บอทตอบสนองเมื่อผู้เล่นกินหมากบอท / เช็คบอท (เฉพาะโหมด Single Player)
+    if (APP.gameMode === 'single' && APP.botPersona) {
+        if (wasCapture) setTimeout(() => botSay('gotCaptured'), 350);
+        if (chess.status === 'check') setTimeout(() => botSay('takingCheck'), 700);
+    }
+
     checkGameOver();
     if (APP.gameMode === 'single' && (chess.status === 'playing' || chess.status === 'check') && chess.turn === 'b') {
         setTimeout(doBotMove, 400 + Math.random() * 600);
@@ -191,7 +238,7 @@ function doBotMove() {
     if (!chess || chess.turn !== 'b') return;
     document.getElementById('bot-think').classList.add('active');
     setTimeout(() => {
-        const m = Bot.getBestMove(chess, APP.botDifficulty || 500);
+        const m = Bot.getBestMove(chess, APP.botPersona || APP.botDifficulty || 500);
         document.getElementById('bot-think').classList.remove('active');
         if (m) {
             const wasCapture = !!chess.board[m.to];
@@ -208,6 +255,13 @@ function doBotMove() {
             updateSidebar();
 
             if (chess.status === 'check') setTimeout(() => Sound.check(), 150);
+
+            // บอทพูดเมื่อกินหมากผู้เล่น / เช็คผู้เล่น
+            if (APP.botPersona) {
+                if (wasCapture) setTimeout(() => botSay('selfCapture'), 300);
+                if (chess.status === 'check') setTimeout(() => botSay('givingCheck'), 600);
+            }
+
             checkGameOver();
         }
     }, 100);
@@ -314,10 +368,16 @@ async function showGameOver(status) {
         setTimeout(() => Sound.lose(), 200);
     }
 
+    if (APP.gameMode === 'single' && APP.botPersona) {
+        if (result === 'draw') setTimeout(() => botSay('onDraw'), 500);
+        else if (result === 'win') setTimeout(() => botSay('onLose'), 500); // ผู้เล่น(ขาว)ชนะ -> บอทแพ้
+        else if (result === 'loss') setTimeout(() => botSay('onWin'), 500); // บอท(ดำ)ชนะ
+    }
+
     let delta = 0;
     if (APP.gameMode === 'single' && APP.player && APP.gameMode !== 'whiteboard') {
         // Single player vs AI: reward depends on bot difficulty rating chosen
-        if (result === 'win') delta = BOT_LEVELS[APP.botDifficulty] || 5;
+        if (result === 'win') delta = APP.botPersona?.reward || 5;
         const ratingBefore = APP.player.rating;
         APP.player.rating = Math.max(0, APP.player.rating + delta);
         try {
@@ -668,8 +728,10 @@ function doLogout() {
 function startSinglePlayer() { APP.pendingMode = 'single'; showPage('page-bot-difficulty'); }
 function startTwoPlayer() { APP.pendingMode = 'two'; showPage('page-hint'); }
 
-function startBotGame(rating) {
-    APP.botDifficulty = rating;
+function startBotGame(personaId) {
+    const persona = getPersonaById(personaId);
+    APP.botPersona = persona;
+    APP.botDifficulty = persona.rating;
     APP.hintMode = true;
     startGame(APP.pendingMode);
 }
@@ -746,23 +808,35 @@ function startGame(mode) {
         resignBtn.onclick = () => confirmResign();
     }
 
-    // Restore history card, hide chat (custom mode will override)
+    // Restore history card, hide chat (custom/single mode will override below)
     document.getElementById('history-card').style.display = '';
     document.getElementById('chat-card').style.display = 'none';
     document.getElementById('room-number-display').style.display = 'none';
+    const chatInputRowReset = document.getElementById('chat-input-row');
+    if (chatInputRowReset) chatInputRowReset.style.display = '';
 
     // Restore gameover modal buttons to default
     const btns = document.querySelector('#gameover-modal .modal-btns');
     if (btns) btns.innerHTML = `<button class="btn" onclick="playAgain()">เล่นอีกครั้ง</button><button class="btn btn-outline" onclick="showPage('page-menu')">เมนูหลัก</button>`;
 
     if (mode === 'single') {
-        botRating = APP.botDifficulty || 500;
+        const persona = APP.botPersona || getPersonaById(null);
+        botRating = persona.rating;
         document.getElementById('white-name').textContent = Security.sanitize(p.nickname);
         document.getElementById('white-rating').textContent = `Rating: ${p.rating}`;
-        document.getElementById('black-name').textContent = 'AI';
+        document.getElementById('black-name').textContent = persona.name;
         document.getElementById('black-rating').textContent = `Rating: ${botRating}`;
-        document.getElementById('black-avatar').textContent = 'AI';
+        document.getElementById('black-avatar').textContent = persona.avatar;
         document.getElementById('btn-draw').style.display = 'none';
+
+        // เปิดกล่องแชทสำหรับฟังคำพูดของบอท (ซ่อนช่องพิมพ์ เพราะพิมพ์คุยกับบอทไม่ได้)
+        document.getElementById('history-card').style.display = '';
+        document.getElementById('chat-card').style.display = 'flex';
+        document.getElementById('room-badge').textContent = `${persona.avatar} ${persona.styleLabel}`;
+        const inputRow = document.getElementById('chat-input-row');
+        if (inputRow) inputRow.style.display = 'none';
+        document.getElementById('chat-messages').innerHTML = '';
+        setTimeout(() => botSay('greeting'), 500);
     } else if (mode === 'two') {
         document.getElementById('white-name').textContent = Security.sanitize(p.nickname) + ' (ขาว)';
         document.getElementById('white-rating').textContent = `Rating: ${p.rating}`;
@@ -1200,6 +1274,8 @@ const CustomMode = {
         document.getElementById('history-card').style.display = 'none';
         document.getElementById('chat-card').style.display = 'flex';
         document.getElementById('room-badge').textContent = 'ห้อง #' + this.roomCode;
+        const inputRowOnline = document.getElementById('chat-input-row');
+        if (inputRowOnline) inputRowOnline.style.display = '';
 
         // Clear chat and add color announcement
         this.chatMessages = [];

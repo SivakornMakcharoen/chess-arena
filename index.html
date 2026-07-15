@@ -165,40 +165,11 @@
             </div>
         </div>
         <div class="page-hero">
-            <div class="page-hero-title">เลือกระดับความยากของ Bot</div>
+            <div class="page-hero-title">เลือกคู่ต่อสู้ AI</div>
             <div class="page-hero-subtitle">
-                ยิ่งความยากสูง ยิ่งได้ Rating เยอะเมื่อชนะ</div>
+                แต่ละบอทมีสไตล์การเล่นไม่เหมือนกัน ยิ่งยาก ยิ่งได้ Rating เยอะเมื่อชนะ</div>
         </div>
-        <div class="hint-grid">
-            <div class="hint-card" onclick="startBotGame(100)">
-                <div class="hint-card-title">Rating 100</div>
-                <div class="hint-card-desc">ชนะได้ +2 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(300)">
-                <div class="hint-card-title">Rating 300</div>
-                <div class="hint-card-desc">ชนะได้ +4 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(500)">
-                <div class="hint-card-title">Rating 500</div>
-                <div class="hint-card-desc">ชนะได้ +5 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(900)">
-                <div class="hint-card-title">Rating 900</div>
-                <div class="hint-card-desc">ชนะได้ +7 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(1100)">
-                <div class="hint-card-title">Rating 1100</div>
-                <div class="hint-card-desc">ชนะได้ +15 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(1200)">
-                <div class="hint-card-title">Rating 1200</div>
-                <div class="hint-card-desc">ชนะได้ +17 Rating</div>
-            </div>
-            <div class="hint-card" onclick="startBotGame(1500)">
-                <div class="hint-card-title">Rating 1500</div>
-                <div class="hint-card-desc">ชนะได้ +20 Rating</div>
-            </div>
-        </div>
+        <div class="hint-grid persona-grid" id="bot-persona-grid"></div>
     </div>
 
     <!-- ========== PAGE 3B: Player 2 Login ========== -->
@@ -307,7 +278,7 @@
                         <span id="room-badge" class="room-badge"></span>
                     </div>
                     <div class="chat-messages" id="chat-messages"></div>
-                    <div class="chat-input-row">
+                    <div class="chat-input-row" id="chat-input-row">
                         <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." maxlength="200" autocomplete="off">
                         <button class="chat-send-btn" onclick="sendChatMessage()">ส่ง</button>
                     </div>

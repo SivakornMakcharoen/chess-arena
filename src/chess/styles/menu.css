@@ -124,3 +124,58 @@
             color: var(--muted);
             line-height: 1.6;
         }
+
+        /* Bot persona selection cards */
+        .persona-grid {
+            max-width: 900px;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        }
+
+        .persona-card {
+            position: relative;
+            padding: 24px 16px 20px;
+        }
+
+        .persona-avatar {
+            font-size: 42px;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .persona-name {
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .persona-rating {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .persona-style-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(181, 136, 99, 0.15);
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .persona-tagline {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+            min-height: 34px;
+        }
+
+        .persona-reward {
+            font-size: 12px;
+            color: var(--accent, #22c55e);
+            font-weight: 700;
+            margin-top: 8px;
+        }
