@@ -285,4 +285,3 @@ export class ChessGame {
         return attackers;
     }
 }
-skd

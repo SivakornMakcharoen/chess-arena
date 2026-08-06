@@ -1,4 +1,4 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './chess/config.js';
+import { API_KEY, API_URL } from './chess/config.js';
 import { Auth } from './chess/auth.js';
 import { Bot } from './chess/bot.js';
 import { BOT_PERSONAS, getPersonaById } from './chess/bot-personas.js';
@@ -23,10 +23,50 @@ let APP = {
 };
 
 // ============================================================
+// PLAYER CACHE — เก็บโปรไฟล์ผู้เล่นล่าสุดไว้ใน localStorage ด้วย
+// เพื่อกันเคส refresh หน้าเว็บแล้วดันเด้งกลับไปหน้า login เพราะ
+// backend ตอบช้า/หลุดชั่วคราว (session/token จริงๆ ยังอยู่ครบ แค่
+// เรียก API ไปเช็คโปรไฟล์ผู้เล่นไม่ทันหรือไม่สำเร็จตอนนั้นเฉยๆ)
+// ถ้าเรียก backend ไม่ทัน จะใช้ข้อมูลที่ cache ไว้ไปพลางก่อน แล้วค่อย
+// sync ของจริงเงียบๆ อีกทีตอน backend กลับมาใช้ได้
+// ============================================================
+const PLAYER_CACHE_KEY = 'chess-arena-player-cache';
+
+function cachePlayer(player) {
+    try {
+        if (player) localStorage.setItem(PLAYER_CACHE_KEY, JSON.stringify(player));
+    } catch { /* localStorage อาจไม่พร้อมใช้งาน (private mode ฯลฯ) — ไม่ใช่ error ร้ายแรง */ }
+}
+
+function getCachedPlayer(userId) {
+    try {
+        const raw = localStorage.getItem(PLAYER_CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        return cached?.user_id === userId ? cached : null;
+    } catch {
+        return null;
+    }
+}
+
+/** ตั้งผู้เล่นปัจจุบัน + cache ไว้ในตัวเดียวกันเสมอ กันลืม sync ที่ใดที่หนึ่ง */
+function setActivePlayer(player) {
+    APP.player = player;
+    cachePlayer(player);
+}
+
+// DOM helpers (small refactor utilities)
+const $ = id => document.getElementById(id);
+const createEl = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+const showEl = (id, show = true) => { const el = $(id); if (el) el.style.display = show ? '' : 'none'; };
+
+// ============================================================
 // BOT PERSONA SELECTION PAGE
 // ============================================================
 function renderBotPersonaCards() {
-    const grid = document.getElementById('bot-persona-grid');
+    const grid = $('bot-persona-grid');
     if (!grid) return;
     grid.innerHTML = '';
     BOT_PERSONAS.forEach(p => {
@@ -50,15 +90,13 @@ renderBotPersonaCards();
 // BOT CHAT (ข้อความจากบอทระหว่างเล่น เฉพาะโหมด Single Player)
 // ============================================================
 function appendBotChatMsg(persona, text) {
-    const container = document.getElementById('chat-messages');
+    const container = $('chat-messages');
     if (!container) return;
-    const div = document.createElement('div');
-    div.className = 'chat-msg them';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'chat-msg-name';
+    const div = createEl('div', 'chat-msg them');
+    const nameEl = createEl('div', 'chat-msg-name');
     nameEl.textContent = `${persona.avatar} ${persona.name}`;
     div.appendChild(nameEl);
-    const textEl = document.createElement('div');
+    const textEl = createEl('div');
     textEl.textContent = text;
     div.appendChild(textEl);
     container.appendChild(div);
@@ -87,7 +125,7 @@ function initBoard() {
 }
 
 function renderBoard() {
-    const board = document.getElementById('chessboard');
+    const board = $('chessboard');
     board.innerHTML = '';
     // Flip board for black player in custom mode
     const flipped = (APP.gameMode === 'custom' && typeof CustomMode !== 'undefined' && CustomMode.myColor === 'black');
@@ -236,10 +274,13 @@ function executeMove(from, to, promoChoice = null) {
 
 function doBotMove() {
     if (!chess || chess.turn !== 'b') return;
-    document.getElementById('bot-think').classList.add('active');
+    const botThinkEl = $('bot-think'); if (botThinkEl) botThinkEl.classList.add('active');
     setTimeout(() => {
+        // Bot.getBestMove now accepts either the full persona object (preferred —
+        // gives it rating-based depth/time/randomness AND style-based evaluation
+        // + opening book) or a plain rating number as a fallback.
         const m = Bot.getBestMove(chess, APP.botPersona || APP.botDifficulty || 500);
-        document.getElementById('bot-think').classList.remove('active');
+        if (botThinkEl) botThinkEl.classList.remove('active');
         if (m) {
             const wasCapture = !!chess.board[m.to];
             const wasCastle = chess.board[m.from]?.toUpperCase() === 'K' && Math.abs((m.from % 8) - (m.to % 8)) === 2;
@@ -269,19 +310,16 @@ function doBotMove() {
 
 function showPromotionModal(from, to, turn) {
     const pieces = ['Q', 'R', 'B', 'N'];
-    const grid = document.getElementById('promo-grid');
+    const grid = $('promo-grid');
+    if (!grid) return;
     grid.innerHTML = '';
     pieces.forEach(pc => {
-        const btn = document.createElement('button');
-        btn.className = 'promo-btn';
-        const img = document.createElement('img');
+        const btn = createEl('button', 'promo-btn');
+        const img = createEl('img');
         img.src = PIECE_IMAGES[turn === 'w' ? pc : pc.toLowerCase()];
         img.style.cssText = 'width:48px; height:48px;';
         btn.appendChild(img);
-        btn.onclick = () => {
-            closeModal('promo-modal');
-            executeMove(from, to, pc);
-        };
+        btn.onclick = () => { closeModal('promo-modal'); executeMove(from, to, pc); };
         grid.appendChild(btn);
     });
     openModal('promo-modal');
@@ -289,58 +327,47 @@ function showPromotionModal(from, to, turn) {
 
 function updateSidebar() {
     if (!chess) return;
-    const statusEl = document.getElementById('status-bar');
+    const statusEl = $('status-bar');
     const turnName = chess.turn === 'w' ? 'White' : 'Black';
     if (chess.status === 'check') {
-        statusEl.textContent = `${turnName} Check!`;
-        statusEl.className = 'status-bar check-status';
+        if (statusEl) { statusEl.textContent = `${turnName} Check!`; statusEl.className = 'status-bar check-status'; }
     } else {
-        statusEl.textContent = `${turnName} Turn`;
-        statusEl.className = 'status-bar';
+        if (statusEl) { statusEl.textContent = `${turnName} Turn`; statusEl.className = 'status-bar'; }
+    }
+    const rowW = $('row-white'); if (rowW) rowW.className = 'player-row' + (chess.turn === 'w' ? ' active' : '');
+    const rowB = $('row-black'); if (rowB) rowB.className = 'player-row' + (chess.turn === 'b' ? ' active' : '');
+
+    const wb = $('warning-banner');
+    if (wb) {
+        if (APP.hintMode && chess.status === 'check') {
+            const attackers = chess.getAttackers();
+            const names = { R: 'รูค', N: 'ไนท์', B: 'บิชอป', Q: 'ควีน', P: 'เบี้ย' };
+            const attackerNames = attackers.map(i => (names[chess.board[i].toUpperCase()] || chess.board[i]) + ' (' + chess.sqNote(i) + ')');
+            setText('warning-text', `กษัตริย์โดน Check จาก: ${attackerNames.join(', ')}`);
+            wb.style.display = 'flex';
+        } else {
+            wb.style.display = 'none';
+        }
     }
 
-    document.getElementById('row-white').className = 'player-row' + (chess.turn === 'w' ? ' active' : '');
-    document.getElementById('row-black').className = 'player-row' + (chess.turn === 'b' ? ' active' : '');
-
-    const wb = document.getElementById('warning-banner');
-    if (APP.hintMode && chess.status === 'check') {
-        const attackers = chess.getAttackers();
-        const names = { R: 'รูค', N: 'ไนท์', B: 'บิชอป', Q: 'ควีน', P: 'เบี้ย' };
-        const attackerNames = attackers.map(i => (names[chess.board[i].toUpperCase()] || chess.board[i]) + ' (' + chess.sqNote(i) + ')');
-        document.getElementById('warning-text').textContent = `กษัตริย์โดน Check จาก: ${attackerNames.join(', ')}`;
-        wb.style.display = 'flex';
-    } else {
-        wb.style.display = 'none';
+    const el = $('captured-white'); if (el) {
+        el.innerHTML = '';
+        chess.capturedWhite.forEach(p => { const img = createEl('img'); img.src = PIECE_IMAGES[p]; img.style.cssText = 'width:22px; height:22px;'; el.appendChild(img); });
+    }
+    const elB = $('captured-black'); if (elB) {
+        elB.innerHTML = '';
+        chess.capturedBlack.forEach(p => { const img = createEl('img'); img.src = PIECE_IMAGES[p]; img.style.cssText = 'width:22px; height:22px;'; elB.appendChild(img); });
     }
 
-    // FIX: display captured pieces as Unicode characters
-    const el = document.getElementById('captured-white');
-    el.innerHTML = '';
-    chess.capturedWhite.forEach(p => {
-        const img = document.createElement('img');
-        img.src = PIECE_IMAGES[p];
-        img.style.cssText = 'width:22px; height:22px;';
-        el.appendChild(img);
-    });
-
-    const elB = document.getElementById('captured-black');
-    elB.innerHTML = '';
-    chess.capturedBlack.forEach(p => {
-        const img = document.createElement('img');
-        img.src = PIECE_IMAGES[p];
-        img.style.cssText = 'width:22px; height:22px;';
-        elB.appendChild(img);
-    });
-
-    const ml = document.getElementById('move-list');
-    ml.innerHTML = '';
-    for (let i = 0; i < chess.moves.length; i += 2) {
-        const div = document.createElement('div');
-        div.className = 'move-pair';
-        div.innerHTML = `<span class="move-num">${Math.floor(i / 2) + 1}.</span><span class="move-w">${chess.moves[i]?.notation || ''}</span><span class="move-b">${chess.moves[i + 1]?.notation || ''}</span>`;
-        ml.appendChild(div);
+    const ml = $('move-list'); if (ml) {
+        ml.innerHTML = '';
+        for (let i = 0; i < chess.moves.length; i += 2) {
+            const div = createEl('div', 'move-pair');
+            div.innerHTML = `<span class="move-num">${Math.floor(i / 2) + 1}.</span><span class="move-w">${chess.moves[i]?.notation || ''}</span><span class="move-b">${chess.moves[i + 1]?.notation || ''}</span>`;
+            ml.appendChild(div);
+        }
+        ml.scrollTop = ml.scrollHeight;
     }
-    ml.scrollTop = ml.scrollHeight;
 }
 
 function checkGameOver() {
@@ -423,10 +450,10 @@ async function showGameOver(status) {
         }
     }
 
-    document.getElementById('gameover-icon').textContent = icon;
-    document.getElementById('gameover-title').textContent = title;
-    document.getElementById('gameover-sub').textContent = sub;
-    const rEl = document.getElementById('gameover-rating');
+    setText('gameover-icon', icon);
+    setText('gameover-title', title);
+    setText('gameover-sub', sub);
+    const rEl = $('gameover-rating');
     // Show rating info for the current player
     if (APP.gameMode === 'single' && delta !== 0) {
         rEl.textContent = (delta > 0 ? '+' : '') + delta + ' Rating → ' + APP.player?.rating;
@@ -477,36 +504,34 @@ function showPage(id) {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const pg = $(id); if (pg) pg.classList.add('active');
     window.scrollTo(0, 0);
     if (RESTORABLE_PAGES.has(id)) {
         try { sessionStorage.setItem(LAST_PAGE_KEY, id); } catch { /* private mode ฯลฯ ไม่เป็นไร */ }
     }
 }
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) { const m = $(id); if (m) m.classList.add('active'); }
+function closeModal(id) { const m = $(id); if (m) m.classList.remove('active'); }
 
 // ============================================================
 // LOGIN
 // ============================================================
 async function handleLogin() {
     if (!Security.rateLimit('login', 20)) { showLoginError('ลองใหม่ใน 1 นาที'); return; }
-    const email = document.getElementById('inp-email').value.trim();
-    const nick = document.getElementById('inp-nick').value.trim();
-    const password = document.getElementById('inp-password').value;
-    const emailErr = document.getElementById('err-email');
-    const nickErr = document.getElementById('err-nick');
-    const passErr = document.getElementById('err-password');
-    emailErr.style.display = 'none'; nickErr.style.display = 'none'; passErr.style.display = 'none';
-    document.getElementById('login-error').style.display = 'none';
+    const emailEl = $('inp-email'); const nickEl = $('inp-nick'); const passEl = $('inp-password');
+    const email = (emailEl?.value || '').trim();
+    const nick = (nickEl?.value || '').trim();
+    const password = passEl?.value || '';
+    const emailErr = $('err-email'); const nickErr = $('err-nick'); const passErr = $('err-password');
+    if (emailErr) emailErr.style.display = 'none'; if (nickErr) nickErr.style.display = 'none'; if (passErr) passErr.style.display = 'none';
+    const loginErrorEl = $('login-error'); if (loginErrorEl) loginErrorEl.style.display = 'none';
     let valid = true;
     if (!Security.isEmail(email)) { emailErr.style.display = 'block'; valid = false; }
     if (!Security.isNick(nick)) { nickErr.style.display = 'block'; valid = false; }
     if (!password || password.length < 6) { passErr.style.display = 'block'; valid = false; }
     if (!valid) return;
 
-    const btn = document.getElementById('btn-login');
-    btn.disabled = true; btn.textContent = 'กำลังโหลด...';
+    const btn = $('btn-login'); if (btn) { btn.disabled = true; btn.textContent = 'กำลังโหลด...'; }
     try {
         let authData;
         try {
@@ -515,10 +540,6 @@ async function handleLogin() {
         } catch (signInErr) {
             // ไม่ใช่บัญชีเดิม (หรือยังไม่เคยสมัคร) → สมัครสมาชิกใหม่ให้อัตโนมัติ
             authData = await Auth.signUp(email, password);
-            if (!authData.access_token) {
-                showLoginError('สมัครสำเร็จ แต่ต้องกดยืนยันอีเมลก่อนเข้าสู่ระบบ (เช็คกล่องจดหมาย)');
-                return;
-            }
         }
         const user = Auth.getUser();
         let player = await DB.getPlayerByUserId(user.id);
@@ -528,45 +549,16 @@ async function handleLogin() {
             if (!player) throw new Error('ไม่สามารถสร้างโปรไฟล์ผู้เล่นได้');
         }
         APP.player = player;
+        cachePlayer(player);
         updateMenuUI();
         showPage('page-menu');
     } catch (e) {
         const msg = e.message || '';
-        if (msg.includes('already registered')) showLoginError('อีเมลนี้มีบัญชีอยู่แล้ว แต่รหัสผ่านไม่ถูกต้อง');
-        else if (msg.includes('Invalid login')) showLoginError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        if (msg.includes('ถูกใช้สมัครสมาชิกไปแล้ว')) showLoginError('อีเมลนี้มีบัญชีอยู่แล้ว แต่รหัสผ่านไม่ถูกต้อง');
+        else if (msg.includes('ไม่ถูกต้อง')) showLoginError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
         else showLoginError('เข้าสู่ระบบไม่สำเร็จ: ' + msg);
     } finally {
-        btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ / สมัครสมาชิก';
-    }
-}
-
-function handleGoogleLogin() {
-    if (!Security.rateLimit('login', 20)) { showLoginError('ลองใหม่ใน 1 นาที'); return; }
-    Auth.signInWithGoogle(); // redirect ไปหน้า Google ทั้งหน้าเว็บ ไม่มีอะไรทำต่อในฟังก์ชันนี้
-}
-
-/** หลัง Google redirect กลับมา: หา/สร้างโปรไฟล์ผู้เล่นให้ user นี้ แล้วเข้าเมนู */
-async function finishOAuthLogin(session) {
-    const user = session.user;
-    if (!user) { showPage('page-login'); showLoginError('เข้าสู่ระบบด้วย Google ไม่สำเร็จ ลองใหม่อีกครั้ง'); return; }
-    try {
-        let player = await DB.getPlayerByUserId(user.id);
-        if (!player) {
-            // ผู้ใช้ Google ใหม่ ยังไม่มีโปรไฟล์ผู้เล่น -> สร้างให้อัตโนมัติ
-            // ใช้ชื่อจาก Google (full_name / name) หรือ fallback เป็นส่วนหน้า email
-            const googleName = user.user_metadata?.full_name || user.user_metadata?.name || '';
-            const fallbackNick = (user.email || 'player').split('@')[0];
-            const nick = Security.sanitize(googleName || fallbackNick).slice(0, 24) || 'player';
-            const rows = await DB.upsertPlayerForUser(user.id, user.email, nick);
-            player = rows?.[0];
-            if (!player) throw new Error('ไม่สามารถสร้างโปรไฟล์ผู้เล่นได้');
-        }
-        APP.player = player;
-        updateMenuUI();
-        showPage('page-menu');
-    } catch (e) {
-        showPage('page-login');
-        showLoginError('เข้าสู่ระบบด้วย Google ไม่สำเร็จ: ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ / สมัครสมาชิก'; }
     }
 }
 
@@ -574,23 +566,21 @@ async function finishOAuthLogin(session) {
 // FORGOT / RESET PASSWORD
 // ============================================================
 function showForgotPassword() {
-    document.getElementById('forgot-email').value = document.getElementById('inp-email').value || '';
-    const statusEl = document.getElementById('forgot-status');
-    statusEl.style.display = 'none';
+    const fe = $('forgot-email'); const ie = $('inp-email'); if (fe) fe.value = (ie?.value) || '';
+    const statusEl = $('forgot-status'); if (statusEl) statusEl.style.display = 'none';
     openModal('forgot-password-modal');
 }
 
 async function sendPasswordReset() {
-    const email = document.getElementById('forgot-email').value.trim();
-    const statusEl = document.getElementById('forgot-status');
+    const fe = $('forgot-email'); const email = (fe?.value || '').trim();
+    const statusEl = $('forgot-status');
     if (!Security.isEmail(email)) {
         statusEl.className = 'error-msg error-msg-block';
         statusEl.textContent = 'กรุณากรอกอีเมลให้ถูกต้อง';
         statusEl.style.display = 'block';
         return;
     }
-    const btn = document.getElementById('btn-forgot-send');
-    btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+    const btn = $('btn-forgot-send'); if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง...'; }
     try {
         await Auth.requestPasswordReset(email);
         statusEl.className = 'form-note';
@@ -601,14 +591,14 @@ async function sendPasswordReset() {
         statusEl.textContent = 'ส่งไม่สำเร็จ: ' + e.message;
         statusEl.style.display = 'block';
     } finally {
-        btn.disabled = false; btn.textContent = 'ส่งลิงก์รีเซ็ตรหัสผ่าน';
+        if (btn) { btn.disabled = false; btn.textContent = 'ส่งลิงก์รีเซ็ตรหัสผ่าน'; }
     }
 }
 
 async function confirmNewPassword() {
-    const pass = document.getElementById('reset-password-new').value;
-    const pass2 = document.getElementById('reset-password-confirm').value;
-    const statusEl = document.getElementById('reset-status');
+    const pass = ($('reset-password-new')?.value) || '';
+    const pass2 = ($('reset-password-confirm')?.value) || '';
+    const statusEl = $('reset-status');
     statusEl.style.display = 'none';
     if (!pass || pass.length < 6) {
         statusEl.textContent = 'รหัสผ่านอย่างน้อย 6 ตัวอักษร';
@@ -620,8 +610,7 @@ async function confirmNewPassword() {
         statusEl.style.display = 'block';
         return;
     }
-    const btn = document.getElementById('btn-reset-confirm');
-    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    const btn = $('btn-reset-confirm'); if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
     try {
         await Auth.updatePassword(pass);
         const user = await Auth.fetchUser();
@@ -629,6 +618,7 @@ async function confirmNewPassword() {
         closeModal('reset-password-modal');
         if (player) {
             APP.player = player;
+            cachePlayer(player);
             updateMenuUI();
             showPage('page-menu');
         } else {
@@ -636,10 +626,9 @@ async function confirmNewPassword() {
             showPage('page-login');
         }
     } catch (e) {
-        statusEl.textContent = 'ตั้งรหัสผ่านไม่สำเร็จ: ' + e.message;
-        statusEl.style.display = 'block';
+        if (statusEl) { statusEl.textContent = 'ตั้งรหัสผ่านไม่สำเร็จ: ' + e.message; statusEl.style.display = 'block'; }
     } finally {
-        btn.disabled = false; btn.textContent = 'บันทึกรหัสผ่านใหม่';
+        if (btn) { btn.disabled = false; btn.textContent = 'บันทึกรหัสผ่านใหม่'; }
     }
 }
 
@@ -658,15 +647,20 @@ async function confirmNewPassword() {
         openModal('reset-password-modal');
         return;
     }
-    const oauthSession = await Auth.consumeOAuthHashIfPresent();
-    if (oauthSession) {
-        await finishOAuthLogin(oauthSession);
-        return;
-    }
     try {
         const session = await Auth.getValidSession();
         if (session?.user) {
-            const player = await DB.getPlayerByUserId(session.user.id);
+            let player = null;
+            try {
+                player = await DB.getPlayerByUserId(session.user.id);
+                if (player) cachePlayer(player);
+            } catch (fetchErr) {
+                // เรียก backend ไม่สำเร็จตอนนี้ (เช่น backend เพิ่งรีสตาร์ท/หลุดชั่วคราว)
+                // แต่ session ที่ login ไว้ยังใช้ได้จริง — ใช้ข้อมูลผู้เล่นที่ cache ไว้ไปพลางก่อน
+                // แทนที่จะเด้งกลับไปหน้า login ทั้งที่จริงๆ ยัง login อยู่
+                console.warn('โหลดโปรไฟล์ผู้เล่นจาก backend ไม่สำเร็จ ใช้ข้อมูลที่ cache ไว้แทน:', fetchErr);
+                player = getCachedPlayer(session.user.id);
+            }
             if (player) {
                 APP.player = player;
                 updateMenuUI();
@@ -685,26 +679,26 @@ async function confirmNewPassword() {
 })();
 
 function showLoginError(msg) {
-    const el = document.getElementById('login-error');
-    el.textContent = msg; el.style.display = 'block';
+    const el = $('login-error');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
 function updateMenuUI() {
     const p = APP.player;
     if (!p) return;
     const initials = (p.nickname || 'P').slice(0, 2).toUpperCase();
-    document.getElementById('menu-avatar').textContent = initials;
-    document.getElementById('menu-name').textContent = Security.sanitize(p.nickname);
-    document.getElementById('menu-rating').textContent = `Rating: ${p.rating} | W:${p.wins || 0} L:${p.losses || 0} D:${p.draws || 0}`;
-    document.getElementById('white-avatar').textContent = initials;
+    const menuAvatar = $('menu-avatar'); if (menuAvatar) menuAvatar.textContent = initials;
+    setText('menu-name', Security.sanitize(p.nickname));
+    const ratingText = `Rating: ${p.rating} | W:${p.wins || 0} L:${p.losses || 0} D:${p.draws || 0}`;
+    setText('menu-rating', ratingText);
+    const whiteAvatar = $('white-avatar'); if (whiteAvatar) whiteAvatar.textContent = initials;
 }
 
 function handleLogout() {
-    const sub = document.getElementById('logout-modal-sub');
-    if (chess && chess.status === 'playing') {
-        sub.textContent = 'เกมกำลังดำเนินอยู่ ออกจากระบบจะยุติเกม';
-    } else {
-        sub.textContent = 'คุณต้องการออกจากระบบหรือไม่?';
+    const sub = $('logout-modal-sub');
+    if (sub) {
+        if (chess && chess.status === 'playing') sub.textContent = 'เกมกำลังดำเนินอยู่ ออกจากระบบจะยุติเกม';
+        else sub.textContent = 'คุณต้องการออกจากระบบหรือไม่?';
     }
     openModal('logout-modal');
 }
@@ -716,9 +710,9 @@ function doLogout() {
     }
     Auth.signOut().catch(() => { }); // revoke token จริงฝั่ง Supabase + ลบ session ใน localStorage
     APP.player = null; APP.player2 = null; APP.gameMode = null; chess = null;
-    document.getElementById('inp-email').value = '';
-    document.getElementById('inp-nick').value = '';
-    document.getElementById('inp-password').value = '';
+    const ie = $('inp-email'); if (ie) ie.value = '';
+    const inick = $('inp-nick'); if (inick) inick.value = '';
+    const ipw = $('inp-password'); if (ipw) ipw.value = '';
     showPage('page-login');
 }
 
@@ -740,12 +734,12 @@ function setHintMode(enabled) {
     APP.hintMode = enabled;
     if (APP.pendingMode === 'two') {
         // Show Player 2 login before starting
-        document.getElementById('p1-name-display').textContent = Security.sanitize(APP.player?.nickname || '-');
-        document.getElementById('inp-email-p2').value = '';
-        document.getElementById('inp-nick-p2').value = '';
-        document.getElementById('err-email-p2').style.display = 'none';
-        document.getElementById('err-nick-p2').style.display = 'none';
-        document.getElementById('login-error-p2').style.display = 'none';
+        const p1disp = $('p1-name-display'); if (p1disp) p1disp.textContent = Security.sanitize(APP.player?.nickname || '-');
+        const iep2 = $('inp-email-p2'); if (iep2) iep2.value = '';
+        const inp2 = $('inp-nick-p2'); if (inp2) inp2.value = '';
+        const eep2 = $('err-email-p2'); if (eep2) eep2.style.display = 'none';
+        const enk2 = $('err-nick-p2'); if (enk2) enk2.style.display = 'none';
+        const le2 = $('login-error-p2'); if (le2) le2.style.display = 'none';
         showPage('page-login-p2');
     } else {
         startGame(APP.pendingMode);
@@ -754,11 +748,10 @@ function setHintMode(enabled) {
 
 async function handleLoginP2() {
     if (!Security.rateLimit('login_p2', 5)) return;
-    const email = document.getElementById('inp-email-p2').value.trim();
-    const nick = document.getElementById('inp-nick-p2').value.trim();
-    const emailErr = document.getElementById('err-email-p2');
-    const nickErr = document.getElementById('err-nick-p2');
-    emailErr.style.display = 'none'; nickErr.style.display = 'none';
+    const ie = $('inp-email-p2'); const inick = $('inp-nick-p2');
+    const email = (ie?.value || '').trim(); const nick = (inick?.value || '').trim();
+    const emailErr = $('err-email-p2'); const nickErr = $('err-nick-p2');
+    if (emailErr) emailErr.style.display = 'none'; if (nickErr) nickErr.style.display = 'none';
     let valid = true;
     if (!Security.isEmail(email)) { emailErr.style.display = 'block'; valid = false; }
     if (!Security.isNick(nick)) { nickErr.style.display = 'block'; valid = false; }
@@ -766,14 +759,11 @@ async function handleLoginP2() {
 
     // Prevent using same email as P1
     if (email.toLowerCase() === APP.player?.email?.toLowerCase()) {
-        const errEl = document.getElementById('login-error-p2');
-        errEl.textContent = 'ต้องใช้บัญชีคนละบัญชีกับผู้เล่น 1';
-        errEl.style.display = 'block';
+        const errEl = $('login-error-p2'); if (errEl) { errEl.textContent = 'ต้องใช้บัญชีคนละบัญชีกับผู้เล่น 1'; errEl.style.display = 'block'; }
         return;
     }
 
-    const btn = document.getElementById('btn-login-p2');
-    btn.disabled = true; btn.textContent = 'กำลังโหลด...';
+    const btn = $('btn-login-p2'); if (btn) { btn.disabled = true; btn.textContent = 'กำลังโหลด...'; }
     try {
         let player2 = await DB.getPlayer(email);
         if (!player2) {
@@ -790,7 +780,7 @@ async function handleLoginP2() {
             rating: 0, wins: 0, losses: 0, draws: 0
         };
     } finally {
-        btn.disabled = false; btn.textContent = 'เริ่มเล่น';
+        if (btn) { btn.disabled = false; btn.textContent = 'เริ่มเล่น'; }
     }
     startGame('two');
 }
@@ -801,19 +791,13 @@ function startGame(mode) {
     initBoard();
 
     // Always restore resign button when starting a game
-    const resignBtn = document.getElementById('btn-resign-main');
-    if (resignBtn) {
-        resignBtn.style.display = '';
-        resignBtn.textContent = 'ยอมแพ้';
-        resignBtn.onclick = () => confirmResign();
-    }
+    const resignBtn = $('btn-resign-main'); if (resignBtn) { resignBtn.style.display = ''; resignBtn.textContent = 'ยอมแพ้'; resignBtn.onclick = () => confirmResign(); }
 
     // Restore history card, hide chat (custom/single mode will override below)
-    document.getElementById('history-card').style.display = '';
-    document.getElementById('chat-card').style.display = 'none';
-    document.getElementById('room-number-display').style.display = 'none';
-    const chatInputRowReset = document.getElementById('chat-input-row');
-    if (chatInputRowReset) chatInputRowReset.style.display = '';
+    showEl('history-card', true);
+    showEl('chat-card', false);
+    showEl('room-number-display', false);
+    const chatInputRowReset = $('chat-input-row'); if (chatInputRowReset) chatInputRowReset.style.display = '';
 
     // Restore gameover modal buttons to default
     const btns = document.querySelector('#gameover-modal .modal-btns');
@@ -822,29 +806,28 @@ function startGame(mode) {
     if (mode === 'single') {
         const persona = APP.botPersona || getPersonaById(null);
         botRating = persona.rating;
-        document.getElementById('white-name').textContent = Security.sanitize(p.nickname);
-        document.getElementById('white-rating').textContent = `Rating: ${p.rating}`;
-        document.getElementById('black-name').textContent = persona.name;
-        document.getElementById('black-rating').textContent = `Rating: ${botRating}`;
-        document.getElementById('black-avatar').textContent = persona.avatar;
-        document.getElementById('btn-draw').style.display = 'none';
+        setText('white-name', Security.sanitize(p.nickname));
+        setText('white-rating', `Rating: ${p.rating}`);
+        setText('black-name', persona.name);
+        setText('black-rating', `Rating: ${botRating}`);
+        const blackAvatar = $('black-avatar'); if (blackAvatar) blackAvatar.textContent = persona.avatar;
+        showEl('btn-draw', false);
 
         // เปิดกล่องแชทสำหรับฟังคำพูดของบอท (ซ่อนช่องพิมพ์ เพราะพิมพ์คุยกับบอทไม่ได้)
-        document.getElementById('history-card').style.display = '';
-        document.getElementById('chat-card').style.display = 'flex';
-        document.getElementById('room-badge').textContent = `${persona.avatar} ${persona.styleLabel}`;
-        const inputRow = document.getElementById('chat-input-row');
-        if (inputRow) inputRow.style.display = 'none';
-        document.getElementById('chat-messages').innerHTML = '';
+        showEl('history-card', true);
+        showEl('chat-card', true);
+        setText('room-badge', `${persona.avatar} ${persona.styleLabel}`);
+        const inputRow = $('chat-input-row'); if (inputRow) inputRow.style.display = 'none';
+        const chatMessages = $('chat-messages'); if (chatMessages) chatMessages.innerHTML = '';
         setTimeout(() => botSay('greeting'), 500);
     } else if (mode === 'two') {
-        document.getElementById('white-name').textContent = Security.sanitize(p.nickname) + ' (ขาว)';
-        document.getElementById('white-rating').textContent = `Rating: ${p.rating}`;
+        setText('white-name', Security.sanitize(p.nickname) + ' (ขาว)');
+        setText('white-rating', `Rating: ${p.rating}`);
         const p2 = APP.player2;
-        document.getElementById('black-name').textContent = Security.sanitize(p2?.nickname || 'ผู้เล่น 2') + ' (ดำ)';
-        document.getElementById('black-rating').textContent = p2 ? `Rating: ${p2.rating}` : '';
-        document.getElementById('black-avatar').textContent = p2 ? Security.sanitize(p2.nickname).slice(0,2).toUpperCase() : '♚';
-        document.getElementById('btn-draw').style.display = 'none';
+        setText('black-name', Security.sanitize(p2?.nickname || 'ผู้เล่น 2') + ' (ดำ)');
+        setText('black-rating', p2 ? `Rating: ${p2.rating}` : '');
+        const blackAvatar = $('black-avatar'); if (blackAvatar) blackAvatar.textContent = p2 ? Security.sanitize(p2.nickname).slice(0,2).toUpperCase() : '♚';
+        showEl('btn-draw', false);
     }
     showPage('page-board');
 }
@@ -856,25 +839,17 @@ function startWhiteBoard() {
     initBoard();
 
     // ใน Whiteboard: เปลี่ยนปุ่ม "ยอมแพ้" ให้เป็นปุ่ม "ย้อนกลับ" ไปหน้าเมนูหลักแทน
-    const resignBtn = document.getElementById('btn-resign-main');
-    if (resignBtn) {
-        resignBtn.style.display = '';
-        resignBtn.textContent = 'ย้อนกลับ';
-        resignBtn.onclick = () => showPage('page-menu');
-    }
-    document.getElementById('btn-draw').style.display = 'none';
+    const resignBtn = $('btn-resign-main'); if (resignBtn) { resignBtn.style.display = ''; resignBtn.textContent = 'ย้อนกลับ'; resignBtn.onclick = () => showPage('page-menu'); }
+    showEl('btn-draw', false);
 
-    document.getElementById('white-name').textContent = 'ขาว';
-    document.getElementById('white-rating').textContent = '';
-    document.getElementById('black-name').textContent = 'ดำ';
-    document.getElementById('black-rating').textContent = '';
-    document.getElementById('black-avatar').textContent = '♚';
-    document.getElementById('white-avatar').textContent = '♔';
+    setText('white-name', 'ขาว'); setText('white-rating', '');
+    setText('black-name', 'ดำ'); setText('black-rating', '');
+    const blackAvatar = $('black-avatar'); if (blackAvatar) blackAvatar.textContent = '♚';
+    const whiteAvatar = $('white-avatar'); if (whiteAvatar) whiteAvatar.textContent = '♔';
 
-    // Hide history card (ไม่มี history)
-    document.getElementById('history-card').style.display = 'none';
-    document.getElementById('chat-card').style.display = 'none';
-    document.getElementById('room-number-display').style.display = 'none';
+    showEl('history-card', false);
+    showEl('chat-card', false);
+    showEl('room-number-display', false);
 
     showPage('page-board');
 }
@@ -891,11 +866,8 @@ function offerDraw() {
         nickname: APP.player?.nickname || 'Player'
     });
     // Disable draw button temporarily to prevent spam
-    const btn = document.getElementById('btn-draw');
-    if (btn) { btn.disabled = true; btn.textContent = 'รอคำตอบ...'; }
-    setTimeout(() => {
-        if (btn) { btn.disabled = false; btn.textContent = 'ขอเสมอ'; }
-    }, 15000);
+    const btn = $('btn-draw'); if (btn) { btn.disabled = true; btn.textContent = 'รอคำตอบ...'; }
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'ขอเสมอ'; } }, 15000);
 }
 
 function acceptDraw() {
@@ -913,7 +885,7 @@ function confirmResign() { openModal('resign-modal'); }
 function doResign() {
     closeModal('resign-modal');
     // Hide resign button for the one who resigned (prevent double resign)
-    document.getElementById('btn-resign-main').style.display = 'none';
+    const rbtn = $('btn-resign-main'); if (rbtn) rbtn.style.display = 'none';
 
     const loser = chess.turn === 'w' ? 'ขาว' : 'ดำ';
 
@@ -957,11 +929,10 @@ function doResign() {
         }
     }
 
-    document.getElementById('gameover-icon').textContent = '🏳';
-    document.getElementById('gameover-title').textContent = `${loser} ยอมแพ้`;
-    document.getElementById('gameover-sub').textContent = 'ขอบคุณสำหรับเกมดีๆ';
-    document.getElementById('gameover-rating').textContent = '-20 Rating';
-    document.getElementById('gameover-rating').style.color = 'var(--danger)';
+    setText('gameover-icon', '🏳');
+    setText('gameover-title', `${loser} ยอมแพ้`);
+    setText('gameover-sub', 'ขอบคุณสำหรับเกมดีๆ');
+    const gor = $('gameover-rating'); if (gor) { gor.textContent = '-20 Rating'; gor.style.color = 'var(--danger)'; }
     openModal('gameover-modal');
 }
 
@@ -972,15 +943,14 @@ async function showRanking() {
     showPage('page-ranking');
     const p = APP.player;
     const tier = Rating.getTier(p.rating);
-    document.getElementById('my-tier-card').innerHTML = `
+    setHTML('my-tier-card', `
         <div class="tier-icon">${tier.icon}</div>
         <div class="tier-info">
             <h3 style="color:${tier.color}">${tier.name}</h3>
             <p>Rating ของคุณ: <strong>${p.rating}</strong> | Win:${p.wins || 0} Lose:${p.losses || 0} Draw:${p.draws || 0}</p>
-        </div>`;
+        </div>`);
 
-    const listEl = document.getElementById('ranking-list');
-    listEl.innerHTML = '<div class="spinner"></div><div class="loading-text">กำลังโหลด...</div>';
+    const listEl = $('ranking-list'); if (listEl) listEl.innerHTML = '<div class="spinner"></div><div class="loading-text">กำลังโหลด...</div>';
     let rows = [];
     try { rows = await DB.getLeaderboard(100); }
     catch (e) { rows = [{ nickname: p.nickname, email: p.email, rating: p.rating, wins: p.wins || 0, losses: p.losses || 0 }]; }
@@ -1027,11 +997,11 @@ async function showRanking() {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
 });
-document.getElementById('inp-nick').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-document.getElementById('inp-email').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-document.getElementById('inp-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-document.getElementById('inp-nick-p2').addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
-document.getElementById('inp-email-p2').addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
+const _inpNick = $('inp-nick'); if (_inpNick) _inpNick.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+const _inpEmail = $('inp-email'); if (_inpEmail) _inpEmail.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+const _inpPassword = $('inp-password'); if (_inpPassword) _inpPassword.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+const _inpNickP2 = $('inp-nick-p2'); if (_inpNickP2) _inpNickP2.addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
+const _inpEmailP2 = $('inp-email-p2'); if (_inpEmailP2) _inpEmailP2.addEventListener('keydown', e => { if (e.key === 'Enter') handleLoginP2(); });
 
 // ============================================================
 // CUSTOM MODE — ONLINE MULTIPLAYER + REALTIME CHAT
@@ -1071,8 +1041,8 @@ const CustomMode = {
         this.isBuilder = true;
 
         // Show waiting overlay
-        document.getElementById('waiting-room-code').textContent = code;
-        document.getElementById('waiting-overlay').style.display = 'flex';
+        const wcode = $('waiting-room-code'); if (wcode) wcode.textContent = code;
+        const wov = $('waiting-overlay'); if (wov) wov.style.display = 'flex';
 
         this._subscribe(code, 'builder');
     },
@@ -1094,7 +1064,7 @@ const CustomMode = {
 
         // Create Supabase Realtime channel via raw WebSocket-style broadcast
         // We use the Supabase REST-compatible realtime endpoint
-        const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_ANON_KEY + '&vsn=1.0.0';
+        const wsUrl = API_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/realtime/v1/websocket?apikey=' + API_KEY + '&vsn=1.0.0';
 
         const ws = new WebSocket(wsUrl);
         this._ws = ws;
@@ -1186,8 +1156,7 @@ const CustomMode = {
                 break;
             case 'draw_declined':
                 // Opponent declined — reset my draw button
-                const btn = document.getElementById('btn-draw');
-                if (btn) { btn.disabled = false; btn.textContent = 'ขอเสมอ'; }
+                const btn = $('btn-draw'); if (btn) { btn.disabled = false; btn.textContent = 'ขอเสมอ'; }
                 this._addSystemMsg('' + Security.sanitize(data.nickname || 'คู่แข่ง') + ' ปฏิเสธการขอเสมอ');
                 break;
             case 'game_over':
@@ -1197,7 +1166,7 @@ const CustomMode = {
 
     _onDrawOffer(data) {
         const nick = Security.sanitize(data.nickname || 'คู่แข่ง');
-        document.getElementById('draw-offer-text').textContent = `${nick} ขอเสมอ — คุณยอมรับหรือไม่?`;
+        setText('draw-offer-text', `${nick} ขอเสมอ — คุณยอมรับหรือไม่?`);
         openModal('draw-offer-modal');
     },
 
@@ -1205,10 +1174,10 @@ const CustomMode = {
         // Opponent resigned — I win, show modal with "end game" button (no rating loss for me)
         const resignerColor = data.color === 'white' ? 'ขาว' : 'ดำ';
         const resignerNick = Security.sanitize(data.nickname || 'คู่แข่ง');
-        document.getElementById('gameover-icon').textContent = '🏆';
-        document.getElementById('gameover-title').textContent = `${resignerColor} ยอมแพ้!`;
-        document.getElementById('gameover-sub').textContent = `${resignerNick} ยอมแพ้ — คุณชนะ!`;
-        document.getElementById('gameover-rating').textContent = '';
+        setText('gameover-icon', '🏆');
+        setText('gameover-title', `${resignerColor} ยอมแพ้!`);
+        setText('gameover-sub', `${resignerNick} ยอมแพ้ — คุณชนะ!`);
+        const gor = $('gameover-rating'); if (gor) gor.textContent = '';
         // Replace modal buttons: only show "จบเกม" (end game) button for winner
         const btns = document.querySelector('#gameover-modal .modal-btns');
         btns.innerHTML = `<button class="btn btn-outline" onclick="showPage('page-menu')">จบเกม</button>`;
@@ -1220,7 +1189,7 @@ const CustomMode = {
         if (this.isBuilder) {
             this.opponentName = data.nickname || 'Player 2';
             // Hide waiting overlay
-            document.getElementById('waiting-overlay').style.display = 'none';
+            const wov = $('waiting-overlay'); if (wov) wov.style.display = 'none';
             // Start the game for builder
             this._launchGame();
             // Tell joiner to start too
@@ -1235,58 +1204,39 @@ const CustomMode = {
         const myNick = Security.sanitize(APP.player?.nickname || 'You');
         const oppNick = Security.sanitize(this.opponentName || 'Opponent');
 
-        APP.gameMode = 'custom';
-        APP.hintMode = false;
-        initBoard();
+
+        APP.gameMode = 'custom'; APP.hintMode = false; initBoard();
 
         // Restore resign button
-        const resignBtn = document.getElementById('btn-resign-main');
-        if (resignBtn) {
-            resignBtn.style.display = '';
-            resignBtn.textContent = 'ยอมแพ้';
-            resignBtn.onclick = () => confirmResign();
-        }
+        const resignBtn = $('btn-resign-main'); if (resignBtn) { resignBtn.style.display = ''; resignBtn.textContent = 'ยอมแพ้'; resignBtn.onclick = () => confirmResign(); }
 
         // Restore gameover modal buttons
-        const btns = document.querySelector('#gameover-modal .modal-btns');
-        if (btns) btns.innerHTML = `<button class="btn" onclick="playAgain()">เล่นอีกครั้ง</button><button class="btn btn-outline" onclick="showPage('page-menu')">เมนูหลัก</button>`;
-
-        document.getElementById('white-name').textContent = this.myColor === 'white' ? myNick : oppNick;
-        document.getElementById('white-rating').textContent = '';
-        document.getElementById('black-name').textContent = this.myColor === 'black' ? myNick : oppNick;
-        document.getElementById('black-rating').textContent = '';
-        document.getElementById('black-avatar').textContent = '♚';
-        document.getElementById('white-avatar').textContent = (APP.player?.nickname || 'P').slice(0,2).toUpperCase();
-        document.getElementById('btn-draw').style.display = 'inline-block';
-        document.getElementById('btn-draw').disabled = false;
-        document.getElementById('btn-draw').textContent = 'ขอเสมอ';
+        const btns = document.querySelector('#gameover-modal .modal-btns'); if (btns) btns.innerHTML = `<button class="btn" onclick="playAgain()">เล่นอีกครั้ง</button><button class="btn btn-outline" onclick="showPage('page-menu')">เมนูหลัก</button>`;
+        setText('white-name', this.myColor === 'white' ? myNick : oppNick);
+        setText('white-rating', '');
+        setText('black-name', this.myColor === 'black' ? myNick : oppNick);
+        setText('black-rating', '');
+        const blackA = $('black-avatar'); if (blackA) blackA.textContent = '♚';
+        const whiteA = $('white-avatar'); if (whiteA) whiteA.textContent = (APP.player?.nickname || 'P').slice(0,2).toUpperCase();
+        const drawBtn = $('btn-draw'); if (drawBtn) { drawBtn.style.display = 'inline-block'; drawBtn.disabled = false; drawBtn.textContent = 'ขอเสมอ'; }
 
         // Show color indicator for current player
         const colorDot = this.myColor === 'white' ? '⬜' : '⬛';
         const colorTH = this.myColor === 'white' ? 'ขาว' : 'ดำ';
 
         // Show room code + color indicator in topbar
-        const roomDisplay = document.getElementById('room-number-display');
-        roomDisplay.textContent = `🔑 ${this.roomCode}`;
-        roomDisplay.style.display = 'inline-block';
+        const roomDisplay = $('room-number-display'); if (roomDisplay) { roomDisplay.textContent = `🔑 ${this.roomCode}`; roomDisplay.style.display = 'inline-block'; }
 
         // Show chat, hide history
-        document.getElementById('history-card').style.display = 'none';
-        document.getElementById('chat-card').style.display = 'flex';
-        document.getElementById('room-badge').textContent = 'ห้อง #' + this.roomCode;
-        const inputRowOnline = document.getElementById('chat-input-row');
-        if (inputRowOnline) inputRowOnline.style.display = '';
-
-        // Clear chat and add color announcement
+        showEl('history-card', false); showEl('chat-card', true); setText('room-badge', 'ห้อง #' + this.roomCode);
+        const inputRowOnline = $('chat-input-row'); if (inputRowOnline) inputRowOnline.style.display = '';
         this.chatMessages = [];
-        document.getElementById('chat-messages').innerHTML = '';
+        const chatMessages = $('chat-messages'); if (chatMessages) chatMessages.innerHTML = '';
         this._addSystemMsg(`🎮 เชื่อมต่อห้อง #${this.roomCode} สำเร็จ!`);
         this._addSystemMsg(`${colorDot} คุณเล่นเป็นฝ่าย${colorTH}`);
 
         showPage('page-board');
-        document.getElementById('chat-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') sendChatMessage();
-        });
+        const chatInput = $('chat-input'); if (chatInput) chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
     },
 
     _onOpponentMove(data) {
@@ -1327,31 +1277,18 @@ const CustomMode = {
     },
 
     _addMsg(name, text, type) {
-        const container = document.getElementById('chat-messages');
-        if (!container) return;
-        const div = document.createElement('div');
-        div.className = 'chat-msg ' + type;
+        const container = $('chat-messages'); if (!container) return;
+        const div = createEl('div', 'chat-msg ' + type);
         if (type !== 'system') {
-            const nameEl = document.createElement('div');
-            nameEl.className = 'chat-msg-name';
-            nameEl.textContent = name;
-            div.appendChild(nameEl);
+            const nameEl = createEl('div', 'chat-msg-name'); nameEl.textContent = name; div.appendChild(nameEl);
         }
-        const textEl = document.createElement('div');
-        textEl.textContent = text;
-        div.appendChild(textEl);
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        const textEl = createEl('div'); textEl.textContent = text; div.appendChild(textEl);
+        container.appendChild(div); container.scrollTop = container.scrollHeight;
     },
 
     _addSystemMsg(text) {
-        const container = document.getElementById('chat-messages');
-        if (!container) return;
-        const div = document.createElement('div');
-        div.className = 'chat-msg system';
-        div.textContent = text;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        const container = $('chat-messages'); if (!container) return;
+        const div = createEl('div', 'chat-msg system'); div.textContent = text; container.appendChild(div); container.scrollTop = container.scrollHeight;
     },
 
     cleanup() {
@@ -1366,27 +1303,24 @@ const CustomMode = {
         this.isBuilder = false;
 
         // Restore history, hide chat
-        document.getElementById('history-card').style.display = '';
-        document.getElementById('chat-card').style.display = 'none';
-        document.getElementById('room-number-display').style.display = 'none';
+        showEl('history-card', true); showEl('chat-card', false); showEl('room-number-display', false);
     }
 };
 
 // ---- UI Functions for Custom Mode ----
 
 function showCustomMenu() {
-    document.getElementById('join-panel').style.display = 'none';
-    document.getElementById('join-error').style.display = 'none';
-    document.getElementById('join-room-input').value = '';
+    const jp = $('join-panel'); if (jp) jp.style.display = 'none';
+    const je = $('join-error'); if (je) je.style.display = 'none';
+    const jri = $('join-room-input'); if (jri) jri.value = '';
     showPage('page-custom');
 }
 
 function showJoinPanel() {
-    const panel = document.getElementById('join-panel');
+    const panel = $('join-panel');
+    if (!panel) return;
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    if (panel.style.display !== 'none') {
-        setTimeout(() => document.getElementById('join-room-input').focus(), 100);
-    }
+    if (panel.style.display !== 'none') { setTimeout(() => { const jri = $('join-room-input'); if (jri) jri.focus(); }, 100); }
 }
 
 async function startCustomBuild() {
@@ -1394,19 +1328,14 @@ async function startCustomBuild() {
 }
 
 async function joinCustomRoom() {
-    const code = document.getElementById('join-room-input').value.trim();
-    const errEl = document.getElementById('join-error');
-
+    const jri = $('join-room-input'); const code = (jri?.value || '').trim();
+    const errEl = $('join-error');
     if (!/^\d{4}$/.test(code)) {
-        errEl.textContent = 'กรุณาใส่รหัสห้อง 4 หลัก (ตัวเลขเท่านั้น)';
-        errEl.style.display = 'block';
+        if (errEl) { errEl.textContent = 'กรุณาใส่รหัสห้อง 4 หลัก (ตัวเลขเท่านั้น)'; errEl.style.display = 'block'; }
         return;
     }
-
-    errEl.style.display = 'none';
+    if (errEl) errEl.style.display = 'none';
     CustomMode.opponentName = 'Builder';
-
-    // Subscribe as joiner — the builder will respond
     await CustomMode.join(code);
 
     // Wait briefly for WS connection to establish, then send joined event
@@ -1423,19 +1352,12 @@ async function joinCustomRoom() {
     };
 
     // Show a brief waiting state
-    const btn = document.querySelector('#join-panel .btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'กำลังเชื่อมต่อ...'; }
-    setTimeout(() => {
-        if (btn) { btn.disabled = false; btn.textContent = 'เข้าร่วม'; }
-    }, 8000);
+    const btn = document.querySelector('#join-panel .btn'); if (btn) { btn.disabled = true; btn.textContent = 'กำลังเชื่อมต่อ...'; }
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'เข้าร่วม'; } }, 8000);
 }
 
 function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const msg = (input?.value || '').trim();
-    if (!msg) return;
-    CustomMode.sendChat(msg);
-    input.value = '';
+    const input = $('chat-input'); const msg = (input?.value || '').trim(); if (!msg) return; CustomMode.sendChat(msg); if (input) input.value = '';
 }
 
 function copyRoomCode() {
@@ -1470,7 +1392,7 @@ function openCheckers() {
 // ============================================================
 Object.assign(window, {
     acceptDraw, closeModal, confirmNewPassword, confirmResign, copyRoomCode, declineDraw,
-    doLogout, doResign, handleLogin, handleGoogleLogin, handleLoginP2, handleLogout,
+    doLogout, doResign, handleLogin, handleLoginP2, handleLogout,
     joinCustomRoom, offerDraw, openCheckers, playAgain, sendChatMessage, sendPasswordReset,
     setHintMode, showCustomMenu, showForgotPassword, showJoinPanel, showPage, showRanking,
     startBotGame, startCustomBuild, startSinglePlayer, startTwoPlayer, startWhiteBoard,

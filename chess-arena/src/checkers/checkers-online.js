@@ -1,4 +1,4 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config.js';
+import { API_KEY, API_URL } from './config.js';
 
 export function createCheckersOnline({
   getGame,
@@ -39,7 +39,7 @@ export function createCheckersOnline({
     _connect(code, role) {
       this._clearTimers();
       if (this._ws) { try { this._ws.close(); } catch(e) {} this._ws = null; }
-      const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_ANON_KEY + '&vsn=1.0.0';
+      const wsUrl = API_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/realtime/v1/websocket?apikey=' + API_KEY + '&vsn=1.0.0';
       let ws;
       try { ws = new WebSocket(wsUrl); } catch(e) { this._scheduleReconnect(code, role); return; }
       this._ws = ws; this._active = true;

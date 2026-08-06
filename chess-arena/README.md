@@ -15,16 +15,27 @@ chess-arena/
 │   └── pieces/*.svg        # รูปหมาก
 └── src/
     ├── main.js              # entry module ของหน้า Chess
-    ├── chess-engine.js       # โค้ดเกมหมากรุก + Supabase
+    ├── chess-engine.js       # โค้ดเกมหมากรุก + เรียก backend เอง
     ├── chess.css
     ├── checkers-main.js      # entry module ของหน้า Checkers
-    ├── checkers-engine.js    # โค้ดเกมหมากฮอต + Supabase
+    ├── checkers-engine.js    # โค้ดเกมหมากฮอต + เรียก backend เอง
     └── checkers.css
+
+backend/                      # <-- backend ของตัวเอง (Node.js) แทน Supabase เดิม ดู backend/README.md
 ```
 
 ## วิธีติดตั้งและรัน
 
+โปรเจกต์นี้มี 2 ส่วนที่ต้องรันแยกกัน: **frontend** (โฟลเดอร์นี้) และ **backend** (โฟลเดอร์ `backend/` ข้างๆ กัน — ดูวิธีตั้งค่าใน `backend/README.md`)
+
 ```bash
+# 1) ตั้งค่าและรัน backend ก่อน (คนละ terminal)
+cd ../backend
+npm install
+cp .env.example .env   # แล้วแก้ค่าใน .env ตามต้องการ
+npm run dev             # รันที่ http://localhost:3001
+
+# 2) ตั้งค่าและรัน frontend
 npm install
 npm run dev        # เปิด dev server ที่ http://localhost:5173
 npm run build       # build production ไปที่ dist/
@@ -33,20 +44,19 @@ npm run preview     # ลองรันไฟล์ build แบบ production
 
 ## Environment Variables
 
-ค่า Supabase URL/Key ถูกแยกออกจากโค้ดมาไว้ที่ไฟล์ `.env` แล้ว (เดิมฝังอยู่ในไฟล์ .js ตรง ๆ)
-
-ถ้าจะย้ายไป deploy ที่อื่น หรือเปลี่ยนโปรเจกต์ Supabase ของตัวเอง:
+ค่า URL/Key ของ backend ถูกแยกออกจากโค้ดมาไว้ที่ไฟล์ `.env` แล้ว (เดิมฝังอยู่ในไฟล์ .js ตรง ๆ)
 
 1. คัดลอก `.env.example` ไปเป็น `.env`
-2. แก้ค่าตามโปรเจกต์ Supabase ของคุณ (Dashboard → Project Settings → API):
+2. แก้ค่าให้ตรงกับที่ตั้งไว้ใน `backend/.env`:
    ```
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   VITE_API_URL=http://localhost:3001
+   VITE_API_KEY=ต้องตรงกับ API_KEY ใน backend/.env
    ```
+3. ตอน deploy จริง เปลี่ยน `VITE_API_URL` เป็น URL จริงของ backend ที่ deploy ไว้ (เช่น https://api.yourdomain.com)
 
 `.env` ถูกใส่ใน `.gitignore` ไว้แล้ว จะไม่ถูก commit ขึ้น git โดยไม่ตั้งใจ
 
-> หมายเหตุ: Supabase anon key ถูกออกแบบมาให้เปิดเผยฝั่ง client ได้ (ความปลอดภัยจริงอยู่ที่ Row Level Security policies ในฝั่ง Supabase) แต่การแยกเป็น env ก็ยังช่วยให้สลับ project/credentials ระหว่าง dev, staging, production ได้ง่ายโดยไม่ต้องแก้โค้ด
+> หมายเหตุ: ระบบเดิมใช้ Supabase (Auth + Database + Realtime แบบ managed service) ตอนนี้ถูกแทนที่ด้วย backend Node.js ของเราเองทั้งหมดแล้ว — ดูรายละเอียดสถาปัตยกรรม, วิธี deploy, และวิธีตั้งค่า Google OAuth ใน `backend/README.md`
 
 ## หมายเหตุการแปลง
 

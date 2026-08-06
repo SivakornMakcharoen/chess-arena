@@ -18,7 +18,24 @@
 const MATE_SCORE = 1_000_000;
 const DRAW_SCORE = 0;
 
+// ------------------------------------------------------------
+// Per-style evaluation weights. These scale extra positional
+// terms (mobility, king safety, pawn structure, "aggression"
+// toward the enemy king) on top of the shared material+PST base,
+// so each persona's declared style actually changes how it plays
+// mid/endgame — not just its opening book and chat lines.
+// ------------------------------------------------------------
+const STYLE_WEIGHTS = {
+    random:     { mobility: 1.0, kingSafety: 1.0, aggression: 1.0, pawnStructure: 1.0 },
+    balanced:   { mobility: 1.0, kingSafety: 1.0, aggression: 1.0, pawnStructure: 1.0 },
+    defensive:  { mobility: 0.8, kingSafety: 1.6, aggression: 0.5, pawnStructure: 1.2 },
+    positional: { mobility: 1.3, kingSafety: 1.15, aggression: 0.7, pawnStructure: 1.4 },
+    tactical:   { mobility: 1.25, kingSafety: 0.85, aggression: 1.3, pawnStructure: 0.8 },
+    aggressive: { mobility: 1.1, kingSafety: 0.6, aggression: 1.6, pawnStructure: 0.7 },
+};
+
 export const Bot = {
+    _style: 'balanced', // set per search in getBestMove(); read by evaluate()
     pieceValues: { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 },
     pst: {
         P: [0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5, 10, 25, 25, 10, 5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, -5, -10, 0, 0, -10, -5, 5, 5, 10, 10, -20, -20, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -32,22 +49,38 @@ export const Bot = {
     },
 
     // ------------------------------------------------------------
-    // Static evaluation (positive = good for White), taking a raw
-    // board array. Uses a tapered king PST based on how much
-    // material is left on the board (opening/middlegame vs endgame).
+    // Static evaluation (positive = good for White), taking the
+    // search state (board + castling/enPassant needed for mobility)
+    // and, optionally, the game instance (for pseudo-legal move
+    // counts). Uses a tapered king PST based on how much material
+    // is left on the board (opening/middlegame vs endgame), plus
+    // mobility / pawn-structure / king-safety / aggression terms
+    // scaled by the active persona's style (this._style).
     // ------------------------------------------------------------
-    evaluate(board) {
+    evaluate(state, game) {
+        const board = state.board;
+        const weights = STYLE_WEIGHTS[this._style] || STYLE_WEIGHTS.balanced;
         let score = 0;
         let nonPawnMaterial = 0;
+        let whiteBishops = 0, blackBishops = 0;
+        let whiteKingSq = -1, blackKingSq = -1;
+        const whitePawnFiles = new Array(8).fill(0);
+        const blackPawnFiles = new Array(8).fill(0);
+
         for (let i = 0; i < 64; i++) {
             const p = board[i];
             if (!p) continue;
             const t = p.toUpperCase();
+            const isWhite = p === p.toUpperCase();
             if (t !== 'P' && t !== 'K') nonPawnMaterial += this.pieceValues[t] || 0;
+            if (t === 'B') { if (isWhite) whiteBishops++; else blackBishops++; }
+            if (t === 'P') { const c = i % 8; if (isWhite) whitePawnFiles[c]++; else blackPawnFiles[c]++; }
+            if (t === 'K') { if (isWhite) whiteKingSq = i; else blackKingSq = i; }
         }
         // Rough endgame signal: little material left on the board besides kings/pawns.
         const isEndgame = nonPawnMaterial <= 1300 * 2;
 
+        let whiteMobility = 0, blackMobility = 0;
         for (let i = 0; i < 64; i++) {
             const p = board[i];
             if (!p) continue;
@@ -59,8 +92,90 @@ export const Bot = {
             const pos = (table || [])[pstRow] || 0;
             if (isWhite) score += val + pos;
             else score -= val + pos;
+
+            // Cheap pseudo-legal mobility count (skip king: castling
+            // legality checks aren't needed for a "how active is this
+            // piece" signal, and it avoids extra isInCheck calls here).
+            if (game && t !== 'K') {
+                const mob = game.rawMoves(i, board, isWhite ? 'w' : 'b', state.enPassant, state.castling).length;
+                if (isWhite) whiteMobility += mob; else blackMobility += mob;
+            }
         }
+
+        if (game) score += (whiteMobility - blackMobility) * 2 * weights.mobility;
+
+        // Bishop pair bonus.
+        if (whiteBishops >= 2) score += 30 * weights.pawnStructure;
+        if (blackBishops >= 2) score -= 30 * weights.pawnStructure;
+
+        // Pawn structure: doubled + isolated pawn penalties.
+        let pawnScore = 0;
+        for (let f = 0; f < 8; f++) {
+            if (whitePawnFiles[f] > 1) pawnScore -= 15 * (whitePawnFiles[f] - 1);
+            if (blackPawnFiles[f] > 1) pawnScore += 15 * (blackPawnFiles[f] - 1);
+            const wIsolated = whitePawnFiles[f] > 0 && (f === 0 || whitePawnFiles[f - 1] === 0) && (f === 7 || whitePawnFiles[f + 1] === 0);
+            if (wIsolated) pawnScore -= 12;
+            const bIsolated = blackPawnFiles[f] > 0 && (f === 0 || blackPawnFiles[f - 1] === 0) && (f === 7 || blackPawnFiles[f + 1] === 0);
+            if (bIsolated) pawnScore += 12;
+        }
+        score += pawnScore * weights.pawnStructure;
+
+        // King safety: pawn shield in front of a castled/home king (skip in the endgame,
+        // where king activity matters more than shelter).
+        if (!isEndgame) {
+            if (whiteKingSq >= 0) score += this._kingShield(board, whiteKingSq, true) * weights.kingSafety;
+            if (blackKingSq >= 0) score -= this._kingShield(board, blackKingSq, false) * weights.kingSafety;
+        }
+
+        // Aggression: reward non-pawn pieces sitting close to the enemy king
+        // (rough "attack potential" proxy, cheap alternative to full attack maps).
+        if (whiteKingSq >= 0 && blackKingSq >= 0) {
+            score += this._kingProximityScore(board, blackKingSq, true) * weights.aggression;
+            score -= this._kingProximityScore(board, whiteKingSq, false) * weights.aggression;
+        }
+
         return score;
+    },
+
+    // Counts own pawns still on the 3 files around a king's own file,
+    // one and two ranks in front of it (from that side's perspective).
+    // Missing shield pawns cost points; this deliberately ignores open
+    // files vs. semi-open files for simplicity.
+    _kingShield(board, kingSq, isWhite) {
+        const kc = kingSq % 8, kr = Math.floor(kingSq / 8);
+        const dir = isWhite ? -1 : 1;
+        const pawn = isWhite ? 'P' : 'p';
+        let shield = 0, maxShield = 0;
+        for (const dc of [-1, 0, 1]) {
+            const c = kc + dc;
+            if (c < 0 || c > 7) continue;
+            for (const dr of [1, 2]) {
+                const r = kr + dir * dr;
+                if (r < 0 || r > 7) continue;
+                maxShield += 10;
+                if (board[r * 8 + c] === pawn) shield += 10;
+            }
+        }
+        return shield - maxShield * 0.4; // baseline so an open king isn't neutral, it's punished
+    },
+
+    // Sum of piece-weighted proximity (chebyshev distance) of non-pawn,
+    // non-king pieces to the given enemy king square.
+    _kingProximityScore(board, enemyKingSq, forWhitePieces) {
+        const kc = enemyKingSq % 8, kr = Math.floor(enemyKingSq / 8);
+        let total = 0;
+        for (let i = 0; i < 64; i++) {
+            const p = board[i];
+            if (!p) continue;
+            const isWhite = p === p.toUpperCase();
+            if (isWhite !== forWhitePieces) continue;
+            const t = p.toUpperCase();
+            if (t === 'P' || t === 'K') continue;
+            const c = i % 8, r = Math.floor(i / 8);
+            const dist = Math.max(Math.abs(c - kc), Math.abs(r - kr));
+            total += Math.max(0, 6 - dist); // closer pieces score more, 0 once 6+ squares away
+        }
+        return total;
     },
 
     // ------------------------------------------------------------
@@ -186,7 +301,7 @@ export const Bot = {
     _quiesce(game, state, alpha, beta, color, deadline, qPly) {
         if (deadline && (qPly & 7) === 0 && Date.now() >= deadline) return null;
 
-        const standPat = color * this.evaluate(state.board);
+        const standPat = color * this.evaluate(state, game);
         if (standPat >= beta) return beta;
         if (standPat > alpha) alpha = standPat;
         if (qPly >= 8) return alpha; // hard cap so a capture-heavy line can't run away
@@ -288,9 +403,49 @@ export const Bot = {
         return 5000; // top level gets the most thinking time
     },
 
-    getBestMove(game, playerRating) {
+    // 'e2' -> square index (0..63), matching ChessGame's own indexing
+    // (row 0 = rank 8, so this is the exact inverse of game.sqNote()).
+    _uciToIdx(sq) {
+        const c = sq.charCodeAt(0) - 97; // 'a' -> 0
+        const r = 8 - parseInt(sq[1], 10);
+        return r * 8 + c;
+    },
+
+    // Looks for a persona opening line whose prefix matches the moves
+    // already played (in "e2e4"-style uci, built from game.sqNote()).
+    // Returns the next book move once it's still legal in this exact
+    // position, or null to fall back to the normal search.
+    _getBookMove(game, persona) {
+        if (!persona || !persona.openingBook || persona.openingBook.length === 0) return null;
+        const played = game.moves.map(m => game.sqNote(m.from) + game.sqNote(m.to));
+        for (const line of persona.openingBook) {
+            if (line.length <= played.length) continue;
+            let matches = true;
+            for (let i = 0; i < played.length; i++) {
+                if (line[i] !== played[i]) { matches = false; break; }
+            }
+            if (!matches) continue;
+            const nextUci = line[played.length];
+            const from = this._uciToIdx(nextUci.slice(0, 2));
+            const to = this._uciToIdx(nextUci.slice(2, 4));
+            if (game.getLegalMoves(from).includes(to)) return { from, to };
+        }
+        return null;
+    },
+
+    // playerRatingOrPersona accepts either a plain rating number
+    // (legacy call sites / fallback difficulty) or a full persona
+    // object ({ rating, style, openingBook, ... }) from BOT_PERSONAS.
+    getBestMove(game, playerRatingOrPersona) {
         const moves = game.allLegalMoves();
         if (moves.length === 0) return null;
+
+        const persona = (playerRatingOrPersona && typeof playerRatingOrPersona === 'object') ? playerRatingOrPersona : null;
+        const playerRating = persona ? persona.rating : (playerRatingOrPersona || 500);
+        this._style = persona ? (persona.style || 'balanced') : 'balanced';
+
+        const bookMove = this._getBookMove(game, persona);
+        if (bookMove) return bookMove;
 
         if (Math.random() < this.getRandomness(playerRating)) {
             return moves[Math.floor(Math.random() * moves.length)];

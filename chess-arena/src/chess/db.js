@@ -1,28 +1,28 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config.js';
+import { API_KEY, API_URL } from './config.js';
 import { Security } from './security.js';
 import { Auth } from './auth.js';
 
 // ============================================================
-// SUPABASE API WRAPPER
+// API WRAPPER — คุยกับ backend ของเราเอง (แทน Supabase เดิม)
 // ============================================================
 export const DB = {
     async request(path, method = 'GET', body = null) {
         if (!Security.rateLimit('db_req', 30)) throw new Error('Rate limited');
-        // ถ้ามี session ที่ login ไว้ (Supabase Auth) ให้ส่ง access_token ของผู้ใช้
-        // แทน anon key เฉยๆ เพื่อให้ RLS ฝั่ง Supabase เช็ค auth.uid() ได้ว่าเป็นเจ้าของข้อมูลจริง
+        // ถ้ามี session ที่ login ไว้ ให้ส่ง access_token ของผู้ใช้ไปด้วย
+        // เพื่อให้ backend เช็คสิทธิ์ได้ว่าเป็นเจ้าของข้อมูลจริง
         const session = await Auth.getValidSession();
-        const token = session?.access_token || SUPABASE_ANON_KEY;
+        const token = session?.access_token || '';
         const opts = {
             method,
             headers: {
-                'apikey': SUPABASE_ANON_KEY,
+                'apikey': API_KEY,
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'Prefer': method === 'POST' ? 'return=representation' : ''
             }
         };
         if (body) opts.body = JSON.stringify(body);
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, opts);
+        const res = await fetch(`${API_URL}/rest/v1/${path}`, opts);
         if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'DB error'); }
         return res.json().catch(() => null);
     },

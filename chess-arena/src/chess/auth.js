@@ -1,7 +1,7 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config.js';
+import { API_KEY, API_URL } from './config.js';
 
 // ============================================================
-// SUPABASE AUTH (GoTrue REST API)
+// AUTH — คุยกับ backend ของเราเอง (เลียนแบบ REST API เดิมของ GoTrue/Supabase)
 // ============================================================
 // เก็บ session (access_token / refresh_token) ไว้ใน localStorage
 // เพื่อให้ refresh หน้าเว็บแล้วยัง login ค้างอยู่ (แก้ปัญหาเดิมที่
@@ -40,14 +40,28 @@ export const Auth = {
     },
 
     async _authFetch(path, body) {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
-            body: JSON.stringify(body)
-        });
+        let res;
+        try {
+            res = await fetch(`${API_URL}/auth/v1/${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: API_KEY },
+                body: JSON.stringify(body)
+            });
+        } catch (networkErr) {
+            // ต่อ backend ไม่ได้เลย (backend ปิดอยู่/เน็ตหลุด/CORS ผิด ฯลฯ)
+            // ต้องแยกเคสนี้ออกจาก "server ตอบมาว่า token ผิด/หมดอายุจริง"
+            // เพราะถ้าเจอเคสนี้แล้วไปลบ session ทิ้งเลย จะทำให้ผู้ใช้หลุด login
+            // ทั้งที่ login ยังใช้ได้อยู่ แค่ backend ไม่ตอบตอนนั้นชั่วคราวเฉยๆ
+            const err = new Error('เชื่อมต่อ backend ไม่ได้ (ตรวจสอบว่า backend ยังรันอยู่หรือไม่)');
+            err.isNetworkError = true;
+            throw err;
+        }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error(data.error_description || data.msg || data.error || 'เกิดข้อผิดพลาดในการยืนยันตัวตน');
+            const err = new Error(data.error_description || data.msg || data.error || 'เกิดข้อผิดพลาดในการยืนยันตัวตน');
+            err.isNetworkError = false;
+            err.status = res.status;
+            throw err;
         }
         return data;
     },
@@ -78,7 +92,15 @@ export const Auth = {
             const session = this._toSession(data);
             this._save(session);
             return session;
-        } catch {
+        } catch (e) {
+            if (e.isNetworkError) {
+                // ต่อ backend ไม่ได้ตอนนี้ (ชั่วคราว) — ไม่ล้าง session ทิ้ง
+                // คืน session เดิมไปก่อน (access_token อาจใกล้หมดอายุ แต่ยังดีกว่าตัด login ทิ้งเลย)
+                // ครั้งหน้าที่เรียกใช้ (หรือ refresh หน้าเว็บอีกที) จะลองแลก token ใหม่อีกครั้งเอง
+                console.warn('รีเฟรช session ไม่สำเร็จเพราะต่อ backend ไม่ได้ — คง session เดิมไว้ก่อน:', e.message);
+                return this._session;
+            }
+            // backend ตอบกลับมาจริงๆ ว่า refresh token ไม่ถูกต้อง/หมดอายุ (เช่นถูก revoke แล้ว) — ค่อยล้าง session ทิ้ง
             this._save(null);
             return null;
         }
@@ -109,8 +131,8 @@ export const Auth = {
     async fetchUser() {
         const token = this.getAccessToken();
         if (!token) return null;
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` }
+        const res = await fetch(`${API_URL}/auth/v1/user`, {
+            headers: { apikey: API_KEY, Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return null;
         const user = await res.json().catch(() => null);
@@ -123,9 +145,9 @@ export const Auth = {
         this._save(null);
         if (!token) return;
         try {
-            await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+            await fetch(`${API_URL}/auth/v1/logout`, {
                 method: 'POST',
-                headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` }
+                headers: { apikey: API_KEY, Authorization: `Bearer ${token}` }
             });
         } catch { /* revoke ฝั่ง server ไม่สำเร็จก็ไม่เป็นไร เพราะ session ฝั่ง client ถูกลบไปแล้ว */ }
     },
@@ -137,9 +159,9 @@ export const Auth = {
     /** ส่งอีเมลลิงก์รีเซ็ตรหัสผ่านไปให้ผู้ใช้ */
     async requestPasswordReset(email) {
         const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${redirectTo}`, {
+        const res = await fetch(`${API_URL}/auth/v1/recover?redirect_to=${redirectTo}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+            headers: { 'Content-Type': 'application/json', apikey: API_KEY },
             body: JSON.stringify({ email })
         });
         const data = await res.json().catch(() => ({}));
@@ -151,9 +173,9 @@ export const Auth = {
     async updatePassword(newPassword) {
         const token = this.getAccessToken();
         if (!token) throw new Error('ลิงก์รีเซ็ตหมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่');
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        const res = await fetch(`${API_URL}/auth/v1/user`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json', apikey: API_KEY, Authorization: `Bearer ${token}` },
             body: JSON.stringify({ password: newPassword })
         });
         const data = await res.json().catch(() => ({}));
@@ -182,43 +204,5 @@ export const Auth = {
         this._save(session);
         history.replaceState(null, '', window.location.pathname + window.location.search);
         return session;
-    },
-
-    // ============================================================
-    // GOOGLE OAUTH (Supabase "Sign in with Google")
-    // ============================================================
-
-    /**
-     * พาไปหน้า Google เพื่อ login (redirect ทั้งหน้าเว็บ)
-     * Supabase จะพากลับมาที่ redirectTo พร้อม access_token แนบใน URL hash
-     * ต้องเปิด Google provider ใน Supabase Dashboard -> Authentication -> Providers ก่อน
-     */
-    signInWithGoogle() {
-        const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
-        window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
-    },
-
-    /**
-     * ตอน Supabase พากลับมาจาก Google สำเร็จ จะแนบ token ใน URL hash
-     * เช่น #access_token=...&refresh_token=...&expires_in=...&provider_token=...
-     * (ไม่มี type=recovery แบบเคส reset password) ฟังก์ชันนี้ตรวจ/ดึง token นั้น
-     * มาตั้งเป็น session, ดึงข้อมูล user เต็มจาก Supabase แล้วเคลียร์ hash ออกจาก URL bar
-     */
-    async consumeOAuthHashIfPresent() {
-        if (!window.location.hash) return null;
-        const params = new URLSearchParams(window.location.hash.slice(1));
-        if (params.get('type') === 'recovery') return null; // เคส reset password แยกไปจัดการที่ consumeRecoveryHashIfPresent
-        const access_token = params.get('access_token');
-        if (!access_token) return null;
-        const session = {
-            access_token,
-            refresh_token: params.get('refresh_token') || null,
-            expires_at: Date.now() + parseInt(params.get('expires_in') || '3600', 10) * 1000,
-            user: null
-        };
-        this._save(session);
-        history.replaceState(null, '', window.location.pathname + window.location.search);
-        await this.fetchUser(); // เติม user object (id, email, user_metadata เช่นชื่อ/รูปจาก Google)
-        return this._session;
     }
 };
